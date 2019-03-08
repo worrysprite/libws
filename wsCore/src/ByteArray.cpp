@@ -5,38 +5,54 @@ namespace ws
 {
 	namespace core
 	{
-		ByteArray::ByteArray(size_t length) :_capacity(length),
+		ByteArray::ByteArray(size_t length) :_capacity(length), _readOnly(false),
 			_readPos(0), _writePos(0), isAttached(false), mtx(nullptr)
 		{
 			if (!length)
 			{
 				length = DEFAULT_SIZE;
 			}
-			data = malloc(length);
-			memset(data, 0, length);
+			_data = malloc(length);
+			memset(_data, 0, length);
 		}
 
 		ByteArray::ByteArray(const ByteArray& ba) :_capacity(ba._capacity),
-			_readPos(ba._readPos), _writePos(ba._writePos),
+			_readPos(ba._readPos), _writePos(ba._writePos), _readOnly(false),
 			isAttached(false), mtx(nullptr)
 		{
-			data = malloc(_capacity);
-			memcpy(data, ba.data, _capacity);
+			_data = malloc(_capacity);
+			memcpy(_data, ba._data, _capacity);
 		}
 
 		ByteArray::ByteArray(const void* bytes, size_t length, bool copy /*= false*/) :
 			_capacity(length), _readPos(0), _writePos(length),
-			isAttached(!copy), mtx(nullptr)
+			isAttached(!copy), mtx(nullptr), _readOnly(!copy)
 		{
 			if (copy)
 			{
-				data = malloc(length);
-				memcpy(data, bytes, length);
+				_data = malloc(length);
+				memcpy(_data, bytes, length);
 			}
 			else
 			{
-				data = const_cast<void*>(bytes);
+				_data = const_cast<void*>(bytes);
 			}
+		}
+
+		ByteArray::ByteArray(ByteArray&& rvalue) : mtx(nullptr)
+		{
+			_data = rvalue._data;
+			_capacity = rvalue._capacity;
+			_readPos = rvalue._readPos;
+			_writePos = rvalue._writePos;
+			isAttached = rvalue.isAttached;
+			_readOnly = rvalue._readOnly;
+
+			rvalue._data = malloc(DEFAULT_SIZE);
+			rvalue._capacity = DEFAULT_SIZE;
+			rvalue._readPos = rvalue._writePos = 0;
+			rvalue._readOnly = false;
+			rvalue.isAttached = false;
 		}
 
 		size_t ByteArray::readBytes(ByteArray& outBytes, unsigned int offset /*= 0*/, size_t length /*= 0*/) const
@@ -48,7 +64,7 @@ namespace ws
 			if (length > 0)
 			{
 				outBytes.expand(length, offset);
-				void* pDst = (void*)((intptr_t)outBytes.data + offset);
+				void* pDst = (void*)((intptr_t)outBytes._data + offset);
 				memcpy(pDst, readerPointer(), length);
 				outBytes._writePos += length;
 				_readPos += length;
@@ -108,7 +124,7 @@ namespace ws
 			}
 			if (newCap != _capacity)
 			{
-				data = realloc(data, newCap);
+				_data = realloc(_data, newCap);
 				_capacity = newCap;
 			}
 		}
@@ -138,7 +154,7 @@ namespace ws
 			if (length > 0)
 			{
 				expand(length, _writePos);
-				void* pSrc = (void*)((intptr_t)inBytes.data + offset);
+				void* pSrc = (void*)((intptr_t)inBytes._data + offset);
 				memcpy(writerPointer(), pSrc, length);
 				_writePos += length;
 			}
@@ -164,7 +180,7 @@ namespace ws
 
 		void ByteArray::truncate()
 		{
-			memset(data, 0, _capacity);
+			memset(_data, 0, _capacity);
 			_readPos = 0;
 			_writePos = 0;
 		}
@@ -178,7 +194,7 @@ namespace ws
 			{
 				if (out)
 				{
-					memcpy(out, data, _writePos);
+					memcpy(out, _data, _writePos);
 				}
 				truncate();
 			}
@@ -186,10 +202,10 @@ namespace ws
 			{
 				if (out)
 				{
-					memcpy(out, data, length);
+					memcpy(out, _data, length);
 				}
 				_writePos -= length;
-				memmove(data, (void*)((intptr_t)data + length), _writePos);
+				memmove(_data, (void*)((intptr_t)_data + length), _writePos);
 				if (_readPos > length)
 				{
 					_readPos -= length;
@@ -215,7 +231,7 @@ namespace ws
 			{
 				out.writeBytes(*this, 0, length);
 				_writePos -= length;
-				memmove(data, (void*)((intptr_t)data + length), _writePos);
+				memmove(_data, (void*)((intptr_t)_data + length), _writePos);
 				if (_readPos > length)
 				{
 					_readPos -= length;
@@ -236,7 +252,7 @@ namespace ws
 			{
 				if (out)
 				{
-					memcpy(out, data, _writePos);
+					memcpy(out, _data, _writePos);
 				}
 				truncate();
 			}
@@ -245,7 +261,7 @@ namespace ws
 				_writePos -= length;
 				if (out)
 				{
-					memcpy(out, (void*)((intptr_t)data + _writePos), length);
+					memcpy(out, (void*)((intptr_t)_data + _writePos), length);
 				}
 				if (_readPos > _writePos)
 				{
@@ -277,7 +293,7 @@ namespace ws
 
 		void ByteArray::toHexString(char* dest, size_t length, bool toUpperCase /*= false*/) const
 		{
-			unsigned char* bytes = (unsigned char*)data;
+			unsigned char* bytes = (unsigned char*)_data;
 			const char* format(nullptr);
 			if (toUpperCase)
 			{
@@ -298,17 +314,17 @@ namespace ws
 		{
 			if (!isAttached)
 			{
-				free(data);	//先释放之前管理的内存
+				free(_data);	//先释放之前管理的内存
 			}
 			if (copy)
 			{
-				data = malloc(length);
-				memcpy(data, bytes, length);
+				_data = malloc(length);
+				memcpy(_data, bytes, length);
 				isAttached = false;
 			}
 			else
 			{
-				data = const_cast<void*>(bytes);
+				_data = const_cast<void*>(bytes);
 				isAttached = true;
 			}
 			_capacity = length;
@@ -318,9 +334,9 @@ namespace ws
 
 		void ByteArray::swap(ByteArray& other)
 		{
-			auto tmp = data;
-			data = other.data;
-			other.data = tmp;
+			auto tmp = _data;
+			_data = other._data;
+			other._data = tmp;
 
 			auto pos = _readPos;
 			_readPos = other._readPos;

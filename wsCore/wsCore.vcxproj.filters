@@ -9,29 +9,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\ws\core\ByteArray.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ws\core\Log.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ws\core\Math.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ws\core\Profiler.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ws\core\String.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ws\core\Timer.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ws\core\TimeTool.h">
-      <Filter>include</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\ByteArray.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -47,5 +24,40 @@
     <ClCompile Include="src\String.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Event.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Signal.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\ws\core\ByteArray.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\core\Log.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\core\Math.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\core\Profiler.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\core\String.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\core\Timer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\core\TimeTool.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\core\Event.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\core\Signal.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
