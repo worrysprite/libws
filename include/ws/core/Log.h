@@ -1,5 +1,5 @@
-#ifndef __WS_UTILS_LOG_H__
-#define __WS_UTILS_LOG_H__
+#ifndef __WS_CORE_LOG_H__
+#define __WS_CORE_LOG_H__
 
 #include <stdarg.h>
 

@@ -3,11 +3,13 @@
 
 extern bool testSignal();
 extern bool testEvent();
+extern bool testByteArray();
 
 int main()
 {
 	assert(testSignal());
 	assert(testEvent());
+	assert(testByteArray());
 
 	std::cout << "all tests passed!" << std::endl;
 

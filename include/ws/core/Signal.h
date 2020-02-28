@@ -33,7 +33,7 @@ namespace ws
 				}
 			}
 
-		//private:
+		protected:
 			std::unordered_set<const Callback*>		listeners;
 		};
 

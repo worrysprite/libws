@@ -49,6 +49,20 @@ namespace ws
 					_writePos = _capacity : value;
 			}
 
+			//往前或往后移动读位置
+			inline void seek(int pos)
+			{
+				if (pos > 0)
+				{
+					readPosition(_readPos + (size_t)pos);
+				}
+				else if (pos < 0)
+				{
+					pos = -pos;
+					readPosition(_readPos - (size_t)pos);
+				}
+			}
+
 			//可读字节数
 			inline size_t readAvailable() const { return _writePos - _readPos; }
 			//可写字节数
@@ -71,10 +85,6 @@ namespace ws
 
 			//以为十六进制字符输出
 			void toHexString(char* dest, size_t length, bool upperCase = false) const;
-
-			//多线程加锁解锁
-			inline void lock(){ if (!mtx)mtx = new std::mutex; mtx->lock(); }
-			inline void unlock(){ if (!mtx)mtx = new std::mutex; mtx->unlock(); }
 
 			//获取管理的内存块
 			inline void* data(){ return _data; }

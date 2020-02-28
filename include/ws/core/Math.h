@@ -6,6 +6,9 @@
 #include <math.h>
 #include <algorithm>
 
+constexpr double MATH_PI = 3.14159265358979323846;
+constexpr double RAD_PER_ANGLE = 0.01745329251994329577;
+
 namespace ws
 {
 	namespace core

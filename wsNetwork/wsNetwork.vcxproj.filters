@@ -8,4 +8,20 @@
       <UniqueIdentifier>{f1ad8ece-e559-4c0e-9089-a59a217724c0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ClientSocket.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ServerSocket.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\ws\network\ClientSocket.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ws\network\ServerSocket.h">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
