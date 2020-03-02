@@ -11,6 +11,7 @@ using namespace ws::network;
 Client::Client() : server(nullptr), socket(0), readBuffer(BUFFER_SIZE),
 isClosing(false), writeBuffer(BUFFER_SIZE), hasData(false), id(0)
 {
+	memset(&addr, 0, sizeof(addr));
 }
 
 // socket threads
@@ -36,7 +37,7 @@ void Client::send(const ByteArray& packet)
 #ifdef _WIN32
 // main thread
 ServerSocket::ServerSocket() :completionPort(nullptr), lpfnAcceptEx(nullptr), nextClientID(0),
-listenSocket(0), ioDataPoolSize(0), ioDataPostedSize(0)
+listenSocket(0), ioDataPoolSize(0), ioDataPostedSize(0), numClients(0)
 {
 	
 }
@@ -304,7 +305,7 @@ void ServerSocket::flushClient(Client* client)
 
 	while (remain > 0)
 	{
-		OverlappedData* sendData = createOverlappedData(SEND);
+		OverlappedData* sendData = createOverlappedData(SocketOperation::SEND);
 		size_t length = client->writeBuffer.readData(sendData->buffer, BUFFER_SIZE);
 		sendData->wsabuff.len = (ULONG)length;
 		WSASend(client->socket, &(sendData->wsabuff), 1, NULL, 0, &(sendData->overlapped), NULL);
@@ -354,7 +355,7 @@ void ServerSocket::initOverlappedData(OverlappedData& data, SocketOperation oper
 int ServerSocket::postAcceptEx()
 {
 	SOCKET acceptSocket = WSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
-	OverlappedData* ioData = createOverlappedData(ACCEPT, BUFFER_SIZE, acceptSocket);
+	OverlappedData* ioData = createOverlappedData(SocketOperation::ACCEPT, BUFFER_SIZE, acceptSocket);
 	
 	DWORD dwBytes = 0;
 	int result = lpfnAcceptEx(listenSocket, acceptSocket, ioData->buffer, 0,
@@ -371,7 +372,7 @@ int ServerSocket::postAcceptEx()
 int ServerSocket::getAcceptedSocketAddress(char* buffer, sockaddr_in* addr)
 {
 	//GetAcceptExSockAddrs function pointer
-	LPFN_GETACCEPTEXSOCKADDRS lpfnGetAcceptExSockAddrs = NULL;
+	LPFN_GETACCEPTEXSOCKADDRS lpfnGetAcceptExSockAddrs = nullptr;
 	//GetAcceptExSockAddrs function GUID
 	GUID guidGetAcceptExSockAddrs = WSAID_GETACCEPTEXSOCKADDRS;
 	//get GetAcceptExSockAddrs function pointer
@@ -381,9 +382,9 @@ int ServerSocket::getAcceptedSocketAddress(char* buffer, sockaddr_in* addr)
 		&dwBytes, NULL, NULL);
 	if (result == 0)
 	{
-		sockaddr* localAddr = NULL;
-		int localAddrLength;
-		sockaddr* remoteAddr = NULL;
+		sockaddr* localAddr = nullptr;
+		int localAddrLength = 0;
+		sockaddr* remoteAddr = nullptr;
 		int remoteAddrLength;
 		lpfnGetAcceptExSockAddrs(buffer, 0, ADDRESS_LENGTH, ADDRESS_LENGTH, &localAddr, &localAddrLength, &remoteAddr, &remoteAddrLength);
 		memcpy(addr, remoteAddr, localAddrLength);
@@ -398,7 +399,7 @@ int ServerSocket::getAcceptedSocketAddress(char* buffer, sockaddr_in* addr)
 // main thread
 void ServerSocket::postCloseServer()
 {
-	OverlappedData* ioData = createOverlappedData(CLOSE_SERVER);
+	OverlappedData* ioData = createOverlappedData(SocketOperation::CLOSE_SERVER);
 	PostQueuedCompletionStatus(completionPort, 0, listenSocket, &(ioData->overlapped));
 }
 

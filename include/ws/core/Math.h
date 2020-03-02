@@ -9,6 +9,8 @@
 constexpr double MATH_PI = 3.14159265358979323846;
 constexpr double RAD_PER_ANGLE = 0.01745329251994329577;
 
+#pragma warning(disable:26451)
+
 namespace ws
 {
 	namespace core
@@ -24,6 +26,7 @@ namespace ws
 			/* 产生一个在[0,range)区间的随机整数                                    */
 			/************************************************************************/
 			inline static uint32_t						random(uint32_t range){ return (uint32_t)(random() * range); }
+
 			/************************************************************************/
 			/* 产生一个在[start,end]区间的随机整数                                    */
 			/************************************************************************/
@@ -131,5 +134,6 @@ namespace ws
 		};
 	}
 }
+#pragma warning(default: 26451)
 
 #endif

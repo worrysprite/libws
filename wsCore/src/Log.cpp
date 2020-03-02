@@ -9,11 +9,11 @@ namespace ws
 {
 	namespace core
 	{
-		LogLevel Log::level = _ERROR_;
+		LogLevel Log::level = LogLevel::_ERROR_;
 
 		void Log::v(const char* format, ...)
 		{
-			if (level <= _VERBOSE_)
+			if (level <= LogLevel::_VERBOSE_)
 			{
 				va_list args;
 				va_start(args, format);
@@ -24,7 +24,7 @@ namespace ws
 
 		void Log::d(const char* format, ...)
 		{
-			if (level <= _DEBUG_)
+			if (level <= LogLevel::_DEBUG_)
 			{
 				va_list args;
 				va_start(args, format);
@@ -35,7 +35,7 @@ namespace ws
 
 		void Log::i(const char* format, ...)
 		{
-			if (level <= _INFO_)
+			if (level <= LogLevel::_INFO_)
 			{
 				va_list args;
 				va_start(args, format);
@@ -46,7 +46,7 @@ namespace ws
 
 		void Log::w(const char* format, ...)
 		{
-			if (level <= _WARN_)
+			if (level <= LogLevel::_WARN_)
 			{
 				va_list args;
 				va_start(args, format);
@@ -57,7 +57,7 @@ namespace ws
 
 		void Log::e(const char* format, ...)
 		{
-			if (level <= _ERROR_)
+			if (level <= LogLevel::_ERROR_)
 			{
 				va_list args;
 				va_start(args, format);

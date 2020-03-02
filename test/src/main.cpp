@@ -13,7 +13,7 @@ int main()
 
 	std::cout << "all tests passed!" << std::endl;
 
-#ifdef _WIN32 && _DEBUG
+#if _WIN32 && _DEBUG
 	system("pause");
 #endif
 	return 0;

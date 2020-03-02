@@ -13,7 +13,10 @@ namespace ws
 				length = DEFAULT_SIZE;
 			}
 			_data = malloc(length);
-			memset(_data, 0, length);
+			if (_data)
+			{
+				memset(_data, 0, length);
+			}
 		}
 
 		ByteArray::ByteArray(const ByteArray& ba) :_capacity(ba._capacity),
@@ -21,7 +24,10 @@ namespace ws
 			isAttached(false), mtx(nullptr)
 		{
 			_data = malloc(_capacity);
-			memcpy(_data, ba._data, _capacity);
+			if (_data)
+			{
+				memcpy(_data, ba._data, _capacity);
+			}
 		}
 
 		ByteArray::ByteArray(const void* bytes, size_t length, bool copy /*= false*/) :
@@ -31,7 +37,10 @@ namespace ws
 			if (copy)
 			{
 				_data = malloc(length);
-				memcpy(_data, bytes, length);
+				if (_data)
+				{
+					memcpy(_data, bytes, length);
+				}
 			}
 			else
 			{
@@ -39,7 +48,7 @@ namespace ws
 			}
 		}
 
-		ByteArray::ByteArray(ByteArray&& rvalue) : mtx(nullptr)
+		ByteArray::ByteArray(ByteArray&& rvalue) noexcept : mtx(nullptr)
 		{
 			_data = rvalue._data;
 			_capacity = rvalue._capacity;
@@ -124,8 +133,12 @@ namespace ws
 			}
 			if (newCap != _capacity)
 			{
-				_data = realloc(_data, newCap);
-				_capacity = newCap;
+				void* newblock = realloc(_data, newCap);
+				if (newblock)
+				{
+					_data = newblock;
+					_capacity = newCap;
+				}
 			}
 		}
 
@@ -319,7 +332,10 @@ namespace ws
 			if (copy)
 			{
 				_data = malloc(length);
-				memcpy(_data, bytes, length);
+				if (_data)
+				{
+					memcpy(_data, bytes, length);
+				}
 				isAttached = false;
 			}
 			else

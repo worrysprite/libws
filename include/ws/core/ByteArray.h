@@ -18,7 +18,7 @@ namespace ws
 			ByteArray(size_t length = DEFAULT_SIZE);
 			ByteArray(const ByteArray& ba);
 			ByteArray(const void* bytes, size_t length, bool copy = false);
-			ByteArray(ByteArray&& rvalue);
+			ByteArray(ByteArray&& rvalue) noexcept;
 
 			virtual ~ByteArray()
 			{

@@ -9,7 +9,7 @@ namespace ws
 	{
 #define CTIME_SIZE 25
 
-		enum LogLevel
+		enum class LogLevel
 		{
 			_VERBOSE_,
 			_DEBUG_,

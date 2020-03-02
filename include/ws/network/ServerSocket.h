@@ -1,56 +1,19 @@
 #ifndef __WS_SERVER_SOCKET_H__
 #define __WS_SERVER_SOCKET_H__
 
-#ifdef _WIN32
-#include <WinSock2.h>
-#include <Windows.h>
-#include <MSWSock.h>
-#include <WS2tcpip.h>
-#pragma comment(lib, "Ws2_32.lib")		// win32 Socket lib
-#pragma comment(lib, "Kernel32.lib")	// IOCP lib
-#ifndef Socket
-typedef SOCKET Socket;
-#endif
-#elif defined(__linux__)
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/epoll.h>
-#include <netinet/in.h>
-#include <fcntl.h>
-#include <strings.h>
-#include <unistd.h>
-#define EPOLL_SIZE 1000
-#ifndef Socket
-typedef int Socket;
-#endif
-#elif defined(__APPLE__)
-#include <sys/socket.h>
-#include <sys/event.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <unistd.h>
-constexpr int KEVENT_SIZE = 1000;
-#ifndef Socket
-typedef int Socket;
-#endif
-#endif
-
 #include <assert.h>
 #include <mutex>
 #include <list>
 #include <iostream>
 #include <thread>
 #include <functional>
-
 #include <vector>
 #include <set>
 #include <map>
+
+#include "ws/network/NetDef.h"
 #include "ws/core/ByteArray.h"
 #include "ws/core/ObjectPool.h"
-
-constexpr int BUFFER_SIZE = 1024;
-constexpr int ADDRESS_LENGTH = sizeof(sockaddr_in) + 16;
-constexpr int NUM_ACCEPTEX = 100;
 
 using namespace ws::core;
 using namespace std::chrono;
@@ -146,7 +109,7 @@ namespace ws
 			inline size_t getIODataPostedSize(){ return ioDataPostedSize; }
 
 		private:
-			enum SocketOperation
+			enum class SocketOperation
 			{
 				ACCEPT,
 				RECEIVE,

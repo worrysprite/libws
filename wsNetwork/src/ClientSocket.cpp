@@ -6,8 +6,8 @@ using namespace ws::network;
 
 #ifdef _WIN32
 
-ClientSocket::ClientSocket() :sockfd(0), workerThread(nullptr), status(DISCONNECTED),
-isExit(false), _remotePort(0), lastStatus(DISCONNECTED)
+ClientSocket::ClientSocket() :sockfd(0), workerThread(nullptr), status(SocketStatus::DISCONNECTED),
+isExit(false), _remotePort(0), lastStatus(SocketStatus::DISCONNECTED)
 {
 	initWinsock();
 	sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -116,7 +116,7 @@ void ClientSocket::workerProc()
 	{
 		switch (status)
 		{
-		case ClientSocket::CONNECTING:
+		case SocketStatus::CONNECTING:
 		{
 			sockaddr_in addr;
 			memset(&addr, 0, sizeof(sockaddr_in));
@@ -125,24 +125,24 @@ void ClientSocket::workerProc()
 			inet_pton(AF_INET, _remoteIP.c_str(), &addr.sin_addr);
 			if (::connect(sockfd, (sockaddr*)&addr, sizeof(sockaddr_in)) == 0)
 			{
-				status = CONNECTED;
+				status = SocketStatus::CONNECTED;
 			}
 			else
 			{
-				status = DISCONNECTED;
+				status = SocketStatus::DISCONNECTED;
 			}
 			break;
 		}
-		case ClientSocket::CONNECTED:
+		case SocketStatus::CONNECTED:
 		{
 			if (!tryToRecv())
 			{
-				status = DISCONNECTED;
+				status = SocketStatus::DISCONNECTED;
 				break;
 			}
 			if (!tryToSend())
 			{
-				status = DISCONNECTED;
+				status = SocketStatus::DISCONNECTED;
 			}
 			break;
 		}
@@ -186,7 +186,7 @@ bool ClientSocket::tryToSend()
 	{
 		char buffer[BUFFER_SIZE];
 		memset(buffer, 0, BUFFER_SIZE);
-		int length = writeBuffer.readData(buffer, BUFFER_SIZE);
+		int length = (int)writeBuffer.readData(buffer, BUFFER_SIZE);
 		int sentLength = ::send(sockfd, buffer, length, 0);
 		if (sentLength == -1)
 		{
@@ -209,15 +209,15 @@ void ClientSocket::connect(const std::string& ip, uint16_t port)
 {
 	switch (status)
 	{
-	case ClientSocket::DISCONNECTED:
+	case SocketStatus::DISCONNECTED:
 		_remoteIP = ip;
 		_remotePort = port;
-		status = lastStatus = CONNECTING;
+		status = lastStatus = SocketStatus::CONNECTING;
 		break;
-	case ClientSocket::CONNECTING:
+	case SocketStatus::CONNECTING:
 		Log::d("socket is connecting, please wait...");
 		break;
-	case ClientSocket::CONNECTED:
+	case SocketStatus::CONNECTED:
 		Log::d("socket is connected. you must disconnect before connect again.");
 		break;
 	}
@@ -230,11 +230,11 @@ void ClientSocket::update()
 		lastStatus = status;
 		switch (status)
 		{
-		case ClientSocket::DISCONNECTED:
+		case SocketStatus::DISCONNECTED:
 			reset();
 			onClosed();
 			break;
-		case ClientSocket::CONNECTED:
+		case SocketStatus::CONNECTED:
 			onConnected();
 			break;
         default:
@@ -259,6 +259,6 @@ void ClientSocket::close()
 {
 	if (isConnected())
 	{
-		status = DISCONNECTED;
+		status = SocketStatus::DISCONNECTED;
 	}
 }

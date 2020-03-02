@@ -1,44 +1,13 @@
 #ifndef __WS_CLIENT_SOCKET_H__
 #define __WS_CLIENT_SOCKET_H__
 
-#ifdef _WIN32
-#include <WinSock2.h>
-#include <Windows.h>
-#include <MSWSock.h>
-#include <WS2tcpip.h>
-#pragma comment(lib, "Ws2_32.lib")		// win32 Socket lib
-#pragma comment(lib, "Kernel32.lib")	// IOCP lib
-#ifndef Socket
-typedef SOCKET Socket;
-#endif
-#elif defined(__linux__)
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/epoll.h>
-#include <netinet/in.h>
-#include <fcntl.h>
-#include <strings.h>
-#include <unistd.h>
-#define EPOLL_SIZE 1000
-#ifndef Socket
-typedef int Socket;
-#endif
-#elif defined(__APPLE__)
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/select.h>
-#include <unistd.h>
-#ifndef Socket
-typedef int Socket;
-#endif
-#endif
 #include <stdint.h>
 #include <thread>
+
+#include "ws/network/NetDef.h"
 #include "ws/core/ByteArray.h"
 
 using namespace ws::core;
-
-constexpr int BUFFER_SIZE = 1024;
 
 namespace ws
 {
@@ -55,7 +24,7 @@ namespace ws
 
 			virtual void update();
 
-			inline bool isConnected(){ return status == CONNECTED; }
+			inline bool isConnected(){ return status == SocketStatus::CONNECTED; }
 			inline const std::string& remoteIP(){ return _remoteIP; }
 			inline uint16_t remotePort(){ return _remotePort; }
 
@@ -82,7 +51,7 @@ namespace ws
 			static int initWinsock();
 #endif
 
-			enum SocketStatus
+			enum class SocketStatus
 			{
 				DISCONNECTED,
 				CONNECTING,

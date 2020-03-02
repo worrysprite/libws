@@ -23,5 +23,8 @@
     <ClInclude Include="..\include\ws\network\ServerSocket.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\ws\network\NetDef.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

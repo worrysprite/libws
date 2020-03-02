@@ -36,8 +36,6 @@ namespace ws
 		protected:
 			std::unordered_set<const Callback*>		listeners;
 		};
-
-
 	}
 }
 
