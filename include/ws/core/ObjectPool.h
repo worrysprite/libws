@@ -3,6 +3,7 @@
 
 #include <list>
 #include <mutex>
+#include <memory>
 #include "Log.h"
 
 namespace ws
@@ -14,48 +15,41 @@ namespace ws
 		{
 		public:
 			ObjectPool<T>(size_t cap = 0xFFFFFFFF) : capacity(cap) {}
-			
-			~ObjectPool<T>()
-			{
-				for (T* element : list)
-				{
-					delete element;
-				}
-			}
 
-			T* alloc()
+			std::shared_ptr<T> alloc()
 			{
-				T* pT = nullptr;
+				std::shared_ptr<T> obj;
 				if (list.size() > 0)
 				{
-					pT = list.back();
+					obj = list.back();
 					list.pop_back();
 				}
 				else
 				{
-					pT = new T;
+					obj = std::make_shared<T>();
 				}
-				return pT;
+				return obj;
 			}
 
-			void free(T* pT)
+			void free(std::shared_ptr<T> &obj)
 			{
 				if (list.size() < capacity)
 				{
-					list.push_back(pT);
+					list.push_back(obj);
 				}
 				else
 				{
 					Log::w("object pool is full");
 				}
+				obj.reset();
 			}
 
-			typename std::list<T*>::iterator begin()
+			typename std::list<std::shared_ptr<T>>::iterator begin()
 			{
 				return list.begin();
 			}
 
-			typename std::list<T*>::iterator end()
+			typename std::list<std::shared_ptr<T>>::iterator end()
 			{
 				return list.end();
 			}
@@ -63,8 +57,8 @@ namespace ws
 			size_t			size() { return list.size(); }
 
 		private:
-			std::list<T*>	list;
-			size_t			capacity;
+			std::list<std::shared_ptr<T>>	list;
+			size_t							capacity;
 		};
 	}
 }

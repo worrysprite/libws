@@ -52,23 +52,26 @@ namespace ws
 			ServerSocket*			server;
 			ByteArray				readBuffer;
 			ByteArray				writeBuffer;
+			std::mutex				readerMtx;
+			std::mutex				writerMtx;
+
 		private:
 			bool					isClosing;
 			bool					hasData;
-			std::mutex				readerMtx;
-			std::mutex				writerMtx;
 		};
+		typedef std::shared_ptr<Client> ClientPtr;
 
 		struct ServerConfig
 		{
 			ServerConfig() :listenPort(0), maxConnection(0), numIOCPThreads(0), kickTime(0){}
-			unsigned short							listenPort;
-			unsigned int							maxConnection;
-			unsigned char							numIOCPThreads;
+			std::string								listenAddr;
+			uint16_t								listenPort;
+			uint32_t								maxConnection;
+			uint8_t									numIOCPThreads;
 			uint64_t								kickTime;
-			std::function<Client*()>				createClient;
-			std::function<void(Client*)>			onClientConnected;
-			std::function<void(Client*)>			destroyClient;
+			std::function<ClientPtr()>				createClient;
+			std::function<void(ClientPtr)>			onClientConnected;
+			std::function<void(ClientPtr)>			onClientDestroyed;
 		};
 
 		class ServerSocket
@@ -82,13 +85,13 @@ namespace ws
 			virtual void								cleanup();
 			int											startListen();
 			bool										kickClient(uint64_t clientID);
-			Client*										getClient(uint64_t clientID);
-			inline const std::map<uint64_t, Client*>&	getAllClients() const { return allClients; }
+			ClientPtr									getClient(uint64_t clientID);
+			inline const std::map<uint64_t, ClientPtr>&	getAllClients() const { return allClients; }
 			inline size_t								numOnlines(){ return numClients; }
 			inline const ServerConfig&					getConfig(){ return config; }
 
 		protected:
-			std::map<uint64_t, Client*>					allClients;
+			std::map<uint64_t, ClientPtr>				allClients;
 
 		private:
 			ServerConfig								config;
@@ -96,17 +99,17 @@ namespace ws
 			size_t										numClients;
 			Socket										listenSocket;
 			std::mutex									addMtx;
-			std::list<Client*>							addingClients;
+			std::list<ClientPtr>						addingClients;
 
 			int							processEventThread();
 			Client*						addClient(Socket sock, const sockaddr_in &addr);
-			void						destroyClient(Client* client);
-			void						flushClient(Client* client);
+			void						destroyClient(ClientPtr client);
+			void						flushClient(ClientPtr client);
 
 #ifdef _WIN32
 		public:
-			inline size_t getIODataPoolSize(){ return ioDataPoolSize; }
-			inline size_t getIODataPostedSize(){ return ioDataPostedSize; }
+			inline size_t getIODataPoolSize(){ return ioDataPool.size(); }
+			inline size_t getIODataPostedSize(){ return ioDataPosted.size(); }
 
 		private:
 			enum class SocketOperation
@@ -132,18 +135,16 @@ namespace ws
 			ObjectPool<OverlappedData> ioDataPool;
 			std::mutex ioDataPoolMtx;
 
-			std::list<OverlappedData*> ioDataPosted;
-			size_t ioDataPoolSize;
-			size_t ioDataPostedSize;
-			std::list<std::thread*> eventThreads;
+			std::list<std::shared_ptr<OverlappedData>> ioDataPosted;
+			std::list<std::unique_ptr<std::thread>> eventThreads;
 
 			int initWinsock();
 			int postAcceptEx();
 			int getAcceptedSocketAddress(char* buffer, sockaddr_in* addr);
 			void postCloseServer();
-			void writeClientBuffer(Client* client, char* data, size_t size);
+			void writeClientBuffer(Client& client, char* data, size_t size);
 
-			OverlappedData* createOverlappedData(SocketOperation operation, size_t size = BUFFER_SIZE, Socket acceptedSock = NULL);
+			std::shared_ptr<OverlappedData> createOverlappedData(SocketOperation operation, size_t size = BUFFER_SIZE, Socket acceptedSock = NULL);
 			void releaseOverlappedData(OverlappedData* data);
 			void initOverlappedData(OverlappedData& data, SocketOperation operation, size_t size = BUFFER_SIZE, Socket acceptedSock = NULL);
 
@@ -151,20 +152,20 @@ namespace ws
 		private:
 			int epfd, pipe_fd[2];
 			bool isExit;
-			std::thread* eventThread;
+			std::unique_ptr<std::thread> eventThread;
 
-			void readIntoBuffer(Client* client);
-			void writeFromBuffer(Client* client);
-			void writeClientBuffer(Client* client, char* data, size_t size);
+			void readIntoBuffer(Client& client);
+			void writeFromBuffer(Client& client);
+			void writeClientBuffer(Client& client, char* data, size_t size);
 #elif defined(__APPLE__)
         private:
             int kqfd, pipe_fd[2];
-            bool isExit;
-            std::thread* eventThread;
+			bool isExit;
+			std::unique_ptr<std::thread> eventThread;
             
             bool setNonBlock(int sockfd);
-            void readIntoBuffer(Client* client, uint32_t numBytes);
-            void writeFromBuffer(Client* client, uint32_t numBytes);
+            void readIntoBuffer(Client& client, uint32_t numBytes);
+            void writeFromBuffer(Client& client, uint32_t numBytes);
 #endif
 		};
 	}

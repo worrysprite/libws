@@ -5,8 +5,8 @@
 #include <mutex>
 #include <memory.h>
 
-constexpr auto DEFAULT_SIZE = 4096;
-constexpr auto STEP_SIZE = 4096;
+constexpr auto BYTES_DEFAULT_SIZE = 4096;
+constexpr auto BYTES_STEP_SIZE = 4096;
 
 namespace ws
 {
@@ -15,7 +15,7 @@ namespace ws
 		class ByteArray
 		{
 		public:
-			ByteArray(size_t length = DEFAULT_SIZE);
+			ByteArray(size_t length = BYTES_DEFAULT_SIZE);
 			ByteArray(const ByteArray& ba);
 			ByteArray(const void* bytes, size_t length, bool copy = false);
 			ByteArray(ByteArray&& rvalue) noexcept;
@@ -24,7 +24,6 @@ namespace ws
 			{
 				if (!isAttached)
 					free(_data);
-				delete mtx;
 			}
 
 			//数据大小
@@ -72,8 +71,8 @@ namespace ws
 			inline bool readOnly() const { return isAttached || _readOnly; }
 			inline void readOnly(bool v) { _readOnly = v; }
 
-			//清空数据，不会释放内存
-			void truncate();
+			//清空数据，若指定resetSize则重置capacity到resetSize
+			void truncate(size_t resetSize = 0);
 
 			//剪切头部length字节的数据，拷贝到out
 			void cutHead(size_t length = 0, char* out = nullptr);
@@ -95,7 +94,7 @@ namespace ws
 			inline void* writerPointer() { return (void*)((intptr_t)_data + _writePos); }
 			
 			//附加到一块内存
-			void attach(const void* bytes, size_t length, bool copy = false);
+			void attach(void* bytes, size_t length, bool copy = false);
 
 			//与另一个ByteArray交换数据
 			void swap(ByteArray& other);
@@ -312,7 +311,6 @@ namespace ws
 			size_t				_writePos;
 			//内存块大小
 			size_t				_capacity;
-			std::mutex*			mtx;
 		};
 	}
 }

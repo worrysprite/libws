@@ -6,11 +6,11 @@ namespace ws
 	namespace core
 	{
 		ByteArray::ByteArray(size_t length) :_capacity(length), _readOnly(false),
-			_readPos(0), _writePos(0), isAttached(false), mtx(nullptr)
+			_readPos(0), _writePos(0), isAttached(false)
 		{
 			if (!length)
 			{
-				length = DEFAULT_SIZE;
+				length = BYTES_DEFAULT_SIZE;
 			}
 			_data = malloc(length);
 			if (_data)
@@ -21,7 +21,7 @@ namespace ws
 
 		ByteArray::ByteArray(const ByteArray& ba) :_capacity(ba._capacity),
 			_readPos(ba._readPos), _writePos(ba._writePos), _readOnly(false),
-			isAttached(false), mtx(nullptr)
+			isAttached(false)
 		{
 			_data = malloc(_capacity);
 			if (_data)
@@ -32,7 +32,7 @@ namespace ws
 
 		ByteArray::ByteArray(const void* bytes, size_t length, bool copy /*= false*/) :
 			_capacity(length), _readPos(0), _writePos(length),
-			isAttached(!copy), mtx(nullptr), _readOnly(!copy)
+			isAttached(!copy), _readOnly(!copy)
 		{
 			if (copy)
 			{
@@ -48,7 +48,7 @@ namespace ws
 			}
 		}
 
-		ByteArray::ByteArray(ByteArray&& rvalue) noexcept : mtx(nullptr)
+		ByteArray::ByteArray(ByteArray&& rvalue) noexcept
 		{
 			_data = rvalue._data;
 			_capacity = rvalue._capacity;
@@ -57,8 +57,8 @@ namespace ws
 			isAttached = rvalue.isAttached;
 			_readOnly = rvalue._readOnly;
 
-			rvalue._data = malloc(DEFAULT_SIZE);
-			rvalue._capacity = DEFAULT_SIZE;
+			rvalue._data = malloc(BYTES_DEFAULT_SIZE);
+			rvalue._capacity = BYTES_DEFAULT_SIZE;
 			rvalue._readPos = rvalue._writePos = 0;
 			rvalue._readOnly = false;
 			rvalue.isAttached = false;
@@ -129,7 +129,7 @@ namespace ws
 			size_t newCap(_capacity);
 			while (pos + size > newCap)
 			{
-				newCap += STEP_SIZE;
+				newCap += BYTES_STEP_SIZE;
 			}
 			if (newCap != _capacity)
 			{
@@ -191,9 +191,20 @@ namespace ws
 			return *this;
 		}
 
-		void ByteArray::truncate()
+		void ByteArray::truncate(size_t resetSize)
 		{
-			memset(_data, 0, _capacity);
+			if (resetSize)
+			{
+				if (!isAttached)
+				{
+					free(_data);
+					_data = malloc(resetSize);
+				}
+			}
+			if (_data)
+			{
+				memset(_data, 0, _capacity);
+			}
 			_readPos = 0;
 			_writePos = 0;
 		}
@@ -323,7 +334,7 @@ namespace ws
 			}
 		}
 
-		void ByteArray::attach(const void* bytes, size_t length, bool copy /*= false*/)
+		void ByteArray::attach(void* bytes, size_t length, bool copy /*= false*/)
 		{
 			if (!isAttached)
 			{
@@ -340,7 +351,7 @@ namespace ws
 			}
 			else
 			{
-				_data = const_cast<void*>(bytes);
+				_data = bytes;
 				isAttached = true;
 			}
 			_capacity = length;
