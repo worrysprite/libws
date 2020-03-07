@@ -199,7 +199,7 @@ namespace ws
 		class DBQueue
 		{
 		public:
-			DBQueue();
+			DBQueue() : isExit(false), workQueueLength(0) {}
 			virtual ~DBQueue();
 
 			void				addThread(int numThread, const MYSQL_CONFIG& config);
@@ -220,7 +220,7 @@ namespace ws
 			std::mutex					finishMtx;
 			DBRequestList				finishQueue;
 			bool						isExit;
-			std::vector<std::thread*>	workerThreads;
+			std::vector<std::unique_ptr<std::thread>>	workerThreads;
 		};
 	}
 }

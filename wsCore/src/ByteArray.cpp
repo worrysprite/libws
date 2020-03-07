@@ -175,7 +175,7 @@ namespace ws
 
 		void ByteArray::writeData(const void* inData, size_t length)
 		{
-			if (readOnly() || !length)
+			if (readOnly() || !inData || !length)
 				return;
 
 			expand(length, _writePos);

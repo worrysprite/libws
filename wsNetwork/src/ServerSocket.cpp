@@ -8,8 +8,8 @@ using namespace ws::network;
 
 //===================== Client Implements ========================
 // socket threads
-Client::Client() : server(nullptr), socket(0), readBuffer(BUFFER_SIZE),
-isClosing(false), writeBuffer(BUFFER_SIZE), hasData(false), id(0)
+Client::Client() : server(nullptr), socket(0), readerBuffer(BUFFER_SIZE),
+isClosing(false), writerBuffer(BUFFER_SIZE), hasNewData(false), id(0)
 {
 	memset(&addr, 0, sizeof(addr));
 }
@@ -20,23 +20,23 @@ Client::~Client()
 }
 
 // main thread
-void Client::send(const char* data, size_t length)
+void Client::send(const void* data, size_t length)
 {
 	std::lock_guard<std::mutex> lock(writerMtx);
-	writeBuffer.writeData(data, length);
+	writerBuffer.writeData(data, length);
 }
 
 // main thread
 void Client::send(const ByteArray& packet)
 {
 	std::lock_guard<std::mutex> lock(writerMtx);
-	writeBuffer.writeBytes(packet);
+	writerBuffer.writeBytes(packet);
 }
 
 //-----------------------windows implements start-------------------------------
 #ifdef _WIN32
 // main thread
-ServerSocket::ServerSocket() :completionPort(nullptr), lpfnAcceptEx(nullptr), nextClientID(0),
+ServerSocket::ServerSocket() :completionPort(nullptr), lpfnAcceptEx(nullptr),
 	listenSocket(0), numClients(0)
 {
 	
@@ -111,7 +111,7 @@ int ServerSocket::processEventThread()
 					continue;
 				}
 				writeClientBuffer(*client, ioData->buffer, BytesTransferred);
-				client->hasData = true;
+				client->hasNewData = true;
 				initOverlappedData(*ioData, SocketOperation::RECEIVE);
 				WSARecv(client->socket, &(ioData->wsabuff), 1, &numBytes, &Flags, &(ioData->overlapped), NULL);
 			}
@@ -143,7 +143,7 @@ int ServerSocket::processEventThread()
 	return 0;
 }	//end of processEvent
 
-int ServerSocket::initWinsock()
+bool ServerSocket::initWinsock()
 {
 	WORD wVersionRequested = MAKEWORD(2, 2); // request WinSock lib v2.2
 	WSADATA wsaData;	// Windows Socket info struct
@@ -152,29 +152,29 @@ int ServerSocket::initWinsock()
 	if (0 != err)
 	{
 		Log::e("Request Windows Socket Library Error!");
-		return -1;
+		return false;
 	}
 	if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)
 	{
 		WSACleanup();
 		Log::e("Request Windows Socket Version 2.2 Error!");
-		return -1;
+		return false;
 	}
-	return 0;
+	return true;
 }
 
-int ServerSocket::startListen()
+bool ServerSocket::startListen()
 {
-	if (-1 == initWinsock())
+	if (!initWinsock())
 	{
-		return -1;
+		return false;
 	}
 	// create an i/o completion port
 	completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 	if (NULL == completionPort)
 	{
 		Log::e("CreateIoCompletionPort failed. Error: %d", GetLastError());
-		return -1;
+		return false;
 	}
 
 	// get number of cores of cpu
@@ -207,7 +207,7 @@ int ServerSocket::startListen()
 	if (SOCKET_ERROR == result)
 	{
 		Log::e("Bind failed. Error: %d", GetLastError());
-		return -1;
+		return false;
 	}
 
 	// start listen
@@ -215,7 +215,7 @@ int ServerSocket::startListen()
 	if (SOCKET_ERROR == result)
 	{
 		Log::e("Listen failed. Error: %d", GetLastError());
-		return -1;
+		return false;
 	}
 	Log::i("server is listening port %d, waiting for clients...", config.listenPort);
 
@@ -231,7 +231,7 @@ int ServerSocket::startListen()
 	if (result != 0)
 	{
 		Log::e("WSAIoctl get AcceptEx function pointer failed... %d", WSAGetLastError());
-		return -1;
+		return false;
 	}
 
 	//post acceptEx
@@ -239,7 +239,7 @@ int ServerSocket::startListen()
 	{
 		postAcceptEx();
 	}
-	return 0;
+	return true;
 }	//end of startListen
 
 // main thread
@@ -293,8 +293,8 @@ void ServerSocket::flushClient(ClientPtr client)
 		return;
 	}
 	std::lock_guard<std::mutex> writeLock(client->writerMtx);
-	client->writeBuffer.readPosition(0);
-	size_t remain = client->writeBuffer.size();
+	client->writerBuffer.readPosition(0);
+	size_t remain = client->writerBuffer.size();
 	if (!remain)
 	{
 		return;
@@ -303,16 +303,16 @@ void ServerSocket::flushClient(ClientPtr client)
 	while (remain > 0)
 	{
 		auto sendData = createOverlappedData(SocketOperation::SEND);
-		size_t length = client->writeBuffer.readData(sendData->buffer, BUFFER_SIZE);
+		size_t length = client->writerBuffer.readData(sendData->buffer, BUFFER_SIZE);
 		sendData->wsabuff.len = (ULONG)length;
 		WSASend(client->socket, &(sendData->wsabuff), 1, NULL, 0, &(sendData->overlapped), NULL);
 		if (length >= remain)
 		{
 			break;
 		}
-		remain = client->writeBuffer.readAvailable();
+		remain = client->writerBuffer.readAvailable();
 	}
-	client->writeBuffer.truncate();
+	client->writerBuffer.truncate();
 }
 
 // main thread and socket threads
@@ -382,12 +382,13 @@ int ServerSocket::getAcceptedSocketAddress(char* buffer, sockaddr_in* addr)
 		&dwBytes, NULL, NULL);
 	if (result == 0)
 	{
-		sockaddr* localAddr = nullptr;
-		int localAddrLength = 0;
-		sockaddr* remoteAddr = nullptr;
-		int remoteAddrLength;
+		sockaddr* localAddr = nullptr, *remoteAddr = nullptr;
+		int localAddrLength = 0, remoteAddrLength = 0;
 		lpfnGetAcceptExSockAddrs(buffer, 0, ADDRESS_LENGTH, ADDRESS_LENGTH, &localAddr, &localAddrLength, &remoteAddr, &remoteAddrLength);
-		memcpy(addr, remoteAddr, localAddrLength);
+		if (remoteAddr)
+		{
+			memcpy(addr, remoteAddr, remoteAddrLength);
+		}
 		return 0;
 	}
 	else
@@ -420,7 +421,7 @@ void ServerSocket::destroyClient(ClientPtr client)
 void ServerSocket::writeClientBuffer(Client& client, char* data, size_t size)
 {
 	std::lock_guard<std::mutex> lock(client.readerMtx);
-	client.readBuffer.writeData(data, size);
+	client.readerBuffer.writeData(data, size);
 }
 
 //-----------------------linux implements start-------------------------------
@@ -503,13 +504,13 @@ int ServerSocket::processEventThread()
 	return 0;
 }	//end of processEvent
 
-int ServerSocket::startListen()
+bool ServerSocket::startListen()
 {
 	listenSocket = socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 	if (listenSocket < 0)
 	{
 		Log::e("create listen socket error.");
-		return -1;
+		return false;
 	}
 
 	sockaddr_in srvAddr;
@@ -522,27 +523,27 @@ int ServerSocket::startListen()
 	if(setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int))!=0)
 	{
 		Log::e("setsockopt error. errno=%d", errno);
-		return -1;
+		return false;
 	}
 
 	int result = bind(listenSocket, (sockaddr*)&srvAddr, sizeof(srvAddr));
 	if (result < 0)
 	{
 		Log::e("bind port %d error. errno=%d", config.listenPort, errno);
-		return -1;
+		return false;
 	}
 	result = listen(listenSocket, 100);
 	if (result < 0)
 	{
 		Log::e("listen port %d error.", config.listenPort);
-		return -1;
+		return false;
 	}
 	Log::i("server is listening port %d, waiting for clients...", config.listenPort);
 
 	epfd = epoll_create(EPOLL_SIZE);
 	if (epfd < 0)
 	{
-		return -1;
+		return false;
 	}
 	epoll_event ev;
 	ev.events = EPOLLIN | EPOLLET;
@@ -552,7 +553,7 @@ int ServerSocket::startListen()
 	if (-1 == pipe(pipe_fd))
 	{
 		Log::e("create pipe error: %s", strerror(errno));
-		return -1;
+		return false;
 	}
 	ev.data.fd = pipe_fd[0];
 	epoll_ctl(epfd, EPOLL_CTL_ADD, pipe_fd[0], &ev);
@@ -560,7 +561,7 @@ int ServerSocket::startListen()
 	// create threads to process epoll events
 	std::function<int()> eventProc(std::bind(&ServerSocket::processEventThread, this));
 	eventThread = std::make_unique<std::thread>(eventProc);
-	return 0;
+	return true;
 }	//end of startListen
 
 // main thread
@@ -622,7 +623,7 @@ void ServerSocket::readIntoBuffer(Client& client)
 			client.isClosing = true;
 		}
 	}
-	client.hasData = true;
+	client.hasNewData = true;
 }
 
 // main thread and socket thread
@@ -633,23 +634,23 @@ void ServerSocket::writeFromBuffer(Client& client)
 		return;
 	}
 	std::lock_guard<std::mutex> lock(client.writerMtx);
-	size_t remain = client.writeBuffer.size();
+	size_t remain = client.writerBuffer.size();
 	if (!remain)
 	{
 		return;
 	}
 	char buffer[BUFFER_SIZE];
 	bzero(buffer, BUFFER_SIZE);
-	client.writeBuffer.position = 0;
+	client.writerBuffer.position = 0;
 	while (remain > 0)
 	{
-		size_t length = client.writeBuffer.readObject(buffer, BUFFER_SIZE);
+		size_t length = client.writerBuffer.readObject(buffer, BUFFER_SIZE);
 		long sentLength = send(client.socket, buffer, length, 0);
 		if (sentLength == -1)
 		{
 			if (errno == EWOULDBLOCK || errno == EAGAIN)
 			{
-				client.writeBuffer.position -= length;
+				client.writerBuffer.position -= length;
 				break;
 			}
 			else
@@ -660,16 +661,16 @@ void ServerSocket::writeFromBuffer(Client& client)
 		}
 		if (sentLength < (long)length)	// tcp buffer full, stop write and wait epoll notify
 		{
-			client.writeBuffer.position -= length - sentLength;
+			client.writerBuffer.position -= length - sentLength;
 			break;
 		}
 		if (length >= remain)
 		{
 			break;
 		}
-		remain = client.writeBuffer.available();
+		remain = client.writerBuffer.available();
 	}
-	client.writeBuffer.cutHead(client.writeBuffer.position);
+	client.writerBuffer.cutHead(client.writerBuffer.position);
 }
 
 // main thread
@@ -689,7 +690,7 @@ void ServerSocket::destroyClient(ClientPtr client)
 void ServerSocket::writeClientBuffer(Client& client, char* data, size_t size)
 {
 	std::lock_guard<std::mutex> lock(client.readerMtx);
-	client.readBuffer.writeData(data, size);
+	client.readerBuffer.writeData(data, size);
 }
 
 #elif defined(__APPLE__)
@@ -774,13 +775,13 @@ int ServerSocket::processEventThread()
     return 0;
 }	//end of processEvent
 
-int ServerSocket::startListen()
+bool ServerSocket::startListen()
 {
     listenSocket = socket(PF_INET, SOCK_STREAM, 0);
     if (listenSocket < 0)
     {
         Log::e("create listen socket error.");
-        return -1;
+        return false;
     }
     
 	struct sockaddr_in srvAddr;
@@ -793,55 +794,55 @@ int ServerSocket::startListen()
     if(setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int))!=0)
     {
         Log::e("setsockopt error. errno=%d", errno);
-        return -1;
+        return false;
     }
     if (!setNonBlock(listenSocket))
     {
         Log::e("set nonblock error.");
-        return -1;
+        return false;
     }
     
     int result = bind(listenSocket, (sockaddr*)&srvAddr, sizeof(srvAddr));
     if (result < 0)
     {
         Log::e("bind port %d error. errno=%d", config.listenPort, errno);
-        return -1;
+        return false;
     }
     result = listen(listenSocket, 100);
     if (result < 0)
     {
         Log::e("listen port %d error.", config.listenPort);
-        return -1;
+        return false;
     }
     Log::i("server is listening port %d, waiting for clients...", config.listenPort);
     kqfd = kqueue();
     if (kqfd < 0)
     {
-        return -1;
+        return false;
     }
     struct kevent evt;
     EV_SET(&evt, listenSocket, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, (void*)(intptr_t)listenSocket);
     if (kevent(kqfd, &evt, 1, nullptr, 0, nullptr) < 0)
     {
         Log::e("kevent add listen socket error.");
-        return -1;
+        return false;
     }
     if (-1 == pipe(pipe_fd))
     {
         Log::e("create pipe error: %s", strerror(errno));
-        return -1;
+        return false;
     }
     EV_SET(&evt, pipe_fd[0], EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, nullptr);
     if (kevent(kqfd, &evt, 1, nullptr, 0, nullptr) < 0)
     {
         Log::e("kevent add pipe error.");
-        return -1;
+        return false;
     }
     
     // create threads to process epoll events
     std::function<int()> eventProc(std::bind(&ServerSocket::processEventThread, this));
 	eventThread = std::make_unique<std::thread>(eventProc);
-    return 0;
+    return true;
 }	//end of startListen
 
 // main thread
@@ -876,30 +877,29 @@ void ServerSocket::readIntoBuffer(Client& client, uint32_t numBytes)
     {
         return;
     }
-    ByteArray& bytes = client.readBuffer;
-    bytes.lock();
+    ByteArray& bytes = client.readerBuffer;
+	client.readerMtx.lock();
     size_t oldSize = bytes.size();
     bytes.expand(numBytes, oldSize);
     ssize_t length = recv(client.socket, bytes.getReaderPointer(), numBytes, 0);
 	bytes.setContentSize(oldSize + numBytes);
-    bytes.unlock();
+	client.readerMtx.unlock();
     if (length != numBytes)
     {
         Log::e("recv data error!");
     }
-    client.hasData = true;
+    client.hasNewData = true;
 }
 
 // main thread
 void ServerSocket::flushClient(ClientPtr client)
 {
-    client->writeBuffer.lock();
-    if (client->writeBuffer.size())
+	std::lock_guard<std::mutex> lock(client->writerMtx);
+    if (client->writerBuffer.size())
     {
         struct kevent evt;
         EV_SET(&evt, client->socket, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
     }
-	client->writeBuffer.unlock();
 }
 
 // socket thread
@@ -909,12 +909,11 @@ void ServerSocket::writeFromBuffer(Client& client, uint32_t numBytes)
     {
         return;
     }
-    ByteArray& bytes = client.writeBuffer;
-    bytes.lock();
+    ByteArray& bytes = client.writerBuffer;
+	std::lock_guard<std::mutex> lock(client.writerMtx);
     size_t size = bytes.size();
     if (!size)
     {
-        bytes.unlock();
         return;
     }
     if (size > numBytes)
@@ -932,7 +931,6 @@ void ServerSocket::writeFromBuffer(Client& client, uint32_t numBytes)
         struct kevent evt;
         EV_SET(&evt, client.socket, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
     }
-    bytes.unlock();
 }
 
 // main thread and socket thread
@@ -969,24 +967,30 @@ void ServerSocket::destroyClient(ClientPtr client)
 #endif
 
 // main thread
-void ServerSocket::init(const ServerConfig& cfg)
+bool ServerSocket::init(const ServerConfig& cfg)
 {
+	if (!cfg.createClient)
+	{
+		Log::e("interface createClient must be implement!");
+		return false;
+	}
 	config = cfg;
-	assert(config.createClient != nullptr);
 	if (!config.maxConnection)
 	{
 		config.maxConnection = 5000;
 	}
+	return true;
 }
 
 // main thread
 void ServerSocket::update()
 {
-	addMtx.lock();
-	if (addingClients.size() > 0)
+	if (!addingClients.empty())
 	{
+		std::lock_guard<std::mutex> lock(addMtx);
 		for (auto &client : addingClients)
 		{
+			client->id = getNextClientID();
 			if (config.onClientConnected)
 			{
 				config.onClientConnected(client);
@@ -995,14 +999,13 @@ void ServerSocket::update()
 		}
 		addingClients.clear();
 	}
-	addMtx.unlock();
 	uint64_t now = TimeTool::getTickCount();
 	for (auto iter = allClients.begin(); iter != allClients.end();)
 	{
 		auto &client = iter->second;
-		if (client->hasData)
+		if (client->hasNewData)
 		{
-			client->hasData = false;
+			client->hasNewData = false;
 			client->lastActiveTime = now;
 			client->onRecv();
 		}
@@ -1014,19 +1017,18 @@ void ServerSocket::update()
 		{
 			client->isClosing = true;
 		}
-		client->update();
 		flushClient(client);
 		if (client->isClosing)
 		{
-			iter = allClients.erase(iter);
 			destroyClient(client);
+			iter = allClients.erase(iter);
 		}
 		else
 		{
 			++iter;
 		}
 	}
-	numClients = allClients.size();
+	numClients = (uint16_t)allClients.size();
 }
 
 // socket threads
@@ -1039,13 +1041,13 @@ Client* ServerSocket::addClient(Socket sock, const sockaddr_in &addr)
 	client->addr = addr;
 
 	std::lock_guard<std::mutex> lock(addMtx);
-	client->id = ++nextClientID;
+	//client->id = ++nextClientID;
 	addingClients.push_back(client);
 	return client.get();
 }
 
 // main thread
-ClientPtr ServerSocket::getClient(uint64_t clientID)
+ClientPtr ServerSocket::getClient(uint32_t clientID)
 {
 	auto iter = allClients.find(clientID);
 	if (iter != allClients.end())
@@ -1056,7 +1058,7 @@ ClientPtr ServerSocket::getClient(uint64_t clientID)
 }
 
 // main thread
-bool ServerSocket::kickClient(uint64_t clientID)
+bool ServerSocket::kickClient(uint32_t clientID)
 {
 	ClientPtr client = getClient(clientID);
 	if (!client)
@@ -1065,4 +1067,16 @@ bool ServerSocket::kickClient(uint64_t clientID)
 	}
 	client->isClosing = true;
 	return true;
+}
+
+// main thread
+uint16_t ServerSocket::getNextClientID()
+{
+	static uint16_t nextID = 0;
+	do 
+	{
+		++nextID;
+	}
+	while (allClients.find(nextID) != allClients.end());
+	return nextID;
 }

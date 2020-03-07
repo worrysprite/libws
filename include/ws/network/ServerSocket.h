@@ -30,7 +30,7 @@ namespace ws
 			Client();
 			virtual ~Client();
 
-			uint64_t				id;
+			uint16_t				id;
 			uint64_t				lastActiveTime;
 
 			std::string		getIP()
@@ -39,25 +39,26 @@ namespace ws
 				std::string result(inet_ntop(AF_INET, (void*)&addr.sin_addr, buffer, 20));
 				return result;
 			}
-			virtual void	onRecv() = 0;
-			virtual void	onDisconnected(){}
-			virtual void	update(){}
-			virtual void	send(const char* data, size_t length);
+			virtual void	send(const void* data, size_t length);
 			virtual void	send(const ByteArray& packet);
 			inline void		kick(){ isClosing = true; }
+
+		protected:
+			virtual void	onRecv() = 0;
+			virtual void	onDisconnected() {}
 
 		protected:
 			Socket					socket;
 			sockaddr_in				addr;
 			ServerSocket*			server;
-			ByteArray				readBuffer;
-			ByteArray				writeBuffer;
+			ByteArray				readerBuffer;
+			ByteArray				writerBuffer;
 			std::mutex				readerMtx;
 			std::mutex				writerMtx;
 
 		private:
 			bool					isClosing;
-			bool					hasData;
+			bool					hasNewData;
 		};
 		typedef std::shared_ptr<Client> ClientPtr;
 
@@ -66,7 +67,7 @@ namespace ws
 			ServerConfig() :listenPort(0), maxConnection(0), numIOCPThreads(0), kickTime(0){}
 			std::string								listenAddr;
 			uint16_t								listenPort;
-			uint32_t								maxConnection;
+			uint16_t								maxConnection;
 			uint8_t									numIOCPThreads;
 			uint64_t								kickTime;
 			std::function<ClientPtr()>				createClient;
@@ -80,23 +81,22 @@ namespace ws
 			ServerSocket();
 			virtual ~ServerSocket(){}
 
-			virtual void								init(const ServerConfig& cfg);
+			virtual bool								init(const ServerConfig& cfg);
 			virtual void								update();
 			virtual void								cleanup();
-			int											startListen();
-			bool										kickClient(uint64_t clientID);
-			ClientPtr									getClient(uint64_t clientID);
-			inline const std::map<uint64_t, ClientPtr>&	getAllClients() const { return allClients; }
-			inline size_t								numOnlines(){ return numClients; }
+			bool										startListen();
+			bool										kickClient(uint32_t clientID);
+			ClientPtr									getClient(uint32_t clientID);
+			inline const std::map<uint16_t, ClientPtr>&	getAllClients() const { return allClients; }
+			inline uint16_t								numOnlines(){ return numClients; }
 			inline const ServerConfig&					getConfig(){ return config; }
 
 		protected:
-			std::map<uint64_t, ClientPtr>				allClients;
+			std::map<uint16_t, ClientPtr>				allClients;
 
 		private:
 			ServerConfig								config;
-			uint64_t									nextClientID;
-			size_t										numClients;
+			uint16_t									numClients;
 			Socket										listenSocket;
 			std::mutex									addMtx;
 			std::list<ClientPtr>						addingClients;
@@ -105,6 +105,7 @@ namespace ws
 			Client*						addClient(Socket sock, const sockaddr_in &addr);
 			void						destroyClient(ClientPtr client);
 			void						flushClient(ClientPtr client);
+			uint16_t					getNextClientID();
 
 #ifdef _WIN32
 		public:
@@ -138,7 +139,7 @@ namespace ws
 			std::list<std::shared_ptr<OverlappedData>> ioDataPosted;
 			std::list<std::unique_ptr<std::thread>> eventThreads;
 
-			int initWinsock();
+			bool initWinsock();
 			int postAcceptEx();
 			int getAcceptedSocketAddress(char* buffer, sockaddr_in* addr);
 			void postCloseServer();

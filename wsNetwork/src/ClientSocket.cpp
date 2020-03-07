@@ -6,109 +6,36 @@ using namespace ws::network;
 
 #ifdef _WIN32
 
-ClientSocket::ClientSocket() :sockfd(0), workerThread(nullptr), status(SocketStatus::DISCONNECTED),
-isExit(false), _remotePort(0), lastStatus(SocketStatus::DISCONNECTED)
-{
-	initWinsock();
-	sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	workerThread = new std::thread(std::bind(&ClientSocket::workerProc, this));
-}
-
-ClientSocket::~ClientSocket()
-{
-	isExit = true;
-	workerThread->join();
-	delete workerThread;
-	WSACleanup();
-}
-
-int ClientSocket::initWinsock()
+bool ClientSocket::initWinsock()
 {
 	WORD wVersionRequested = MAKEWORD(2, 2); // request WinSock lib v2.2
 	WSADATA wsaData;	// Windows Socket info struct
 	DWORD err = WSAStartup(wVersionRequested, &wsaData);
+
 	if (0 != err)
 	{
 		Log::e("Request Windows Socket Library Error!");
-		return -1;
+		return false;
 	}
 	if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)
 	{
 		WSACleanup();
 		Log::e("Request Windows Socket Version 2.2 Error!");
-		return -1;
+		return false;
 	}
-	return 0;
+	return true;
 }
 
-void ClientSocket::reset()
-{
-	closesocket(sockfd);
-	sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	readerMtx.lock();
-	readBuffer.truncate();
-	readerMtx.unlock();
-	writerMtx.lock();
-	writeBuffer.truncate();
-	writerMtx.unlock();
-}
-
-#elif defined(__linux__)
-
-ClientSocket::ClientSocket() :sockfd(0), workerThread(nullptr), status(DISCONNECTED),
-isExit(false), _remotePort(0), lastStatus(DISCONNECTED)
-{
-	sockfd = socket(PF_INET, SOCK_STREAM, 0);
-	workerThread = new std::thread(std::bind(&ClientSocket::workerProc, this));
-}
+#endif // WIN32
 
 ClientSocket::~ClientSocket()
 {
 	isExit = true;
 	workerThread->join();
-	delete workerThread;
+#ifdef _WIN32
+	WSACleanup();
+#endif // _WIN32
 }
-
-void ClientSocket::reset()
-{
-	::close(sockfd);
-	sockfd = socket(PF_INET, SOCK_STREAM, 0);
-	readBuffer.lock();
-	readBuffer.truncate();
-	readBuffer.unlock();
-	writeBuffer.lock();
-	writeBuffer.truncate();
-	writeBuffer.unlock();
-}
-
-#elif defined(__APPLE__)
-ClientSocket::ClientSocket() :sockfd(0), workerThread(nullptr), status(DISCONNECTED),
-isExit(false), _remotePort(0), lastStatus(DISCONNECTED)
-{
-    sockfd = socket(PF_INET, SOCK_STREAM, 0);
-    workerThread = new std::thread(std::bind(&ClientSocket::workerProc, this));
-}
-
-ClientSocket::~ClientSocket()
-{
-    isExit = true;
-    workerThread->join();
-    delete workerThread;
-}
-
-void ClientSocket::reset()
-{
-    ::close(sockfd);
-    sockfd = socket(PF_INET, SOCK_STREAM, 0);
-    readBuffer.lock();
-    readBuffer.truncate();
-    readBuffer.unlock();
-    writeBuffer.lock();
-    writeBuffer.truncate();
-    writeBuffer.unlock();
-}
-
-#endif // WIN32
 
 void ClientSocket::workerProc()
 {
@@ -149,7 +76,7 @@ void ClientSocket::workerProc()
         default:
             break;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
 
@@ -168,7 +95,7 @@ bool ClientSocket::tryToRecv()
 			return false;
 		}
 		readerMtx.lock();
-		readBuffer.writeData(buffer, length);
+		readerBuffer.writeData(buffer, length);
 		readerMtx.unlock();
 		if (length < BUFFER_SIZE)
 		{
@@ -181,12 +108,12 @@ bool ClientSocket::tryToRecv()
 bool ClientSocket::tryToSend()
 {
 	std::lock_guard<std::mutex> lock(writerMtx);
-	size_t remain = writeBuffer.size();
+	size_t remain = writerBuffer.size();
 	while (remain)
 	{
 		char buffer[BUFFER_SIZE];
 		memset(buffer, 0, BUFFER_SIZE);
-		int length = (int)writeBuffer.readData(buffer, BUFFER_SIZE);
+		int length = (int)writerBuffer.readData(buffer, BUFFER_SIZE);
 		int sentLength = ::send(sockfd, buffer, length, 0);
 		if (sentLength == -1)
 		{
@@ -196,17 +123,33 @@ bool ClientSocket::tryToSend()
 		{
 			if (sentLength < length)
 			{
-				writeBuffer.seek(sentLength - length);
+				writerBuffer.seek(sentLength - length);
 			}
 			remain -= sentLength;
 		}
 	}
-	writeBuffer.truncate();
+	writerBuffer.truncate();
 	return true;
 }
 
 void ClientSocket::connect(const std::string& ip, uint16_t port)
 {
+	if (!onReceived)
+	{
+		Log::e("must implements onReceived!");
+		return;
+	}
+	if (!sockfd)
+	{
+#ifdef _WIN32
+		initWinsock();
+#endif // _WIN32
+		sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	}
+	if (!workerThread)
+	{
+		workerThread = std::make_unique<std::thread>(std::bind(&ClientSocket::workerProc, this));
+	}
 	switch (status)
 	{
 	case SocketStatus::DISCONNECTED:
@@ -232,27 +175,42 @@ void ClientSocket::update()
 		{
 		case SocketStatus::DISCONNECTED:
 			reset();
-			onClosed();
+			if (onClosed)
+			{
+				onClosed();
+			}
 			break;
 		case SocketStatus::CONNECTED:
-			onConnected();
+			if (onConnected)
+			{
+				onConnected();
+			}
 			break;
         default:
             break;
 		}
+	}
+	if (status == SocketStatus::CONNECTED)
+	{
+		std::lock_guard<std::mutex> lock(readerMtx);
+		if (readerBuffer.readAvailable())
+		{
+			onReceived(readerBuffer);
+		}
+		readerBuffer.cutHead(readerBuffer.readPosition());
 	}
 }
 
 void ClientSocket::send(const ByteArray& packet)
 {
 	std::lock_guard<std::mutex> lock(writerMtx);
-	writeBuffer.writeBytes(packet);
+	writerBuffer.writeBytes(packet);
 }
 
-void ClientSocket::send(const char* data, size_t length)
+void ClientSocket::send(const void* data, size_t length)
 {
 	std::lock_guard<std::mutex> lock(writerMtx);
-	writeBuffer.writeData(data, length);
+	writerBuffer.writeData(data, length);
 }
 
 void ClientSocket::close()
@@ -261,4 +219,23 @@ void ClientSocket::close()
 	{
 		status = SocketStatus::DISCONNECTED;
 	}
+}
+
+void ClientSocket::reset()
+{
+#ifdef _WIN32
+	closesocket(sockfd);
+#elif defined(__linux__)
+	::close(sockfd);
+#elif defined(__APPLE__)
+	::close(sockfd);
+#endif
+	sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	readerMtx.lock();
+	readerBuffer.truncate();
+	readerMtx.unlock();
+	writerMtx.lock();
+	writerBuffer.truncate();
+	writerMtx.unlock();
 }

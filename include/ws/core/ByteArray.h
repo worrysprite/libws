@@ -86,7 +86,8 @@ namespace ws
 			void toHexString(char* dest, size_t length, bool upperCase = false) const;
 
 			//获取管理的内存块
-			inline void* data(){ return _data; }
+			inline void* data() { return _data; }
+			inline const void* data() const { return _data; }
 
 			//获取当前读位置的指针
 			inline const void* readerPointer() const { return (void*)((intptr_t)_data + _readPos); }

@@ -16,7 +16,9 @@ namespace ws
 		class ClientSocket
 		{
 		public:
-			ClientSocket();
+			ClientSocket() :sockfd(0), status(SocketStatus::DISCONNECTED),
+				isExit(false), _remotePort(0), lastStatus(SocketStatus::DISCONNECTED) {}
+
 			virtual ~ClientSocket();
 
 			void connect(const std::string& ip, uint16_t port);
@@ -26,29 +28,27 @@ namespace ws
 
 			inline bool isConnected(){ return status == SocketStatus::CONNECTED; }
 			inline const std::string& remoteIP(){ return _remoteIP; }
-			inline uint16_t remotePort(){ return _remotePort; }
+			inline uint16_t remotePort() { return _remotePort; }
 
-			//void read();
-			//void write();
+			void send(const ByteArray& packet);
+			void send(const void* data, size_t length);
+
+			std::function<void()>			onConnected;
+			std::function<void()>			onClosed;
+			std::function<void(ByteArray&)>	onReceived;
 
 		protected:
 			uint16_t				_remotePort;
 			std::string				_remoteIP;
 
-			ByteArray				readBuffer;
-			ByteArray				writeBuffer;
+			ByteArray				readerBuffer;
+			ByteArray				writerBuffer;
 			std::mutex				readerMtx;
 			std::mutex				writerMtx;
 
-			virtual void onConnected(){}
-			virtual void onClosed(){}
-
-			void send(const ByteArray& packet);
-			void send(const char* data, size_t length);
-
 		private:
 #ifdef _WIN32
-			static int initWinsock();
+			static bool initWinsock();
 #endif
 
 			enum class SocketStatus
@@ -57,11 +57,11 @@ namespace ws
 				CONNECTING,
 				CONNECTED
 			};
-			SocketStatus			lastStatus;
-			SocketStatus			status;
-			Socket					sockfd;
-			std::thread*			workerThread;
-			bool					isExit;
+			SocketStatus					lastStatus;
+			SocketStatus					status;
+			Socket							sockfd;
+			std::unique_ptr<std::thread>	workerThread;
+			bool							isExit;
 
 			void					workerProc();
 			bool					tryToRecv();

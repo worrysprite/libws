@@ -18,7 +18,7 @@ bool testSignal()
 	sig1.add(&cb1);
 	sig1.notify();
 
-	Signal<int, float> sig2;
+	Signal<const int&, const float&> sig2;
 	std::function<void(const int& a, const float& b)> cb2 = [](int a, float b)
 	{
 		std::cout << "a=" << a << ", b=" << b << std::endl;

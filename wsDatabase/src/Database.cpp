@@ -829,11 +829,6 @@ void Database::release(DBStatement* dbStmt)
 }
 
 //===================== DBRequestQueue Implements ========================
-DBQueue::DBQueue() : isExit(false), workQueueLength(0)
-{
-
-}
-
 DBQueue::~DBQueue()
 {
 	while (workQueueLength > 0)
@@ -842,10 +837,9 @@ DBQueue::~DBQueue()
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 	this->isExit = true;
-	for (auto th : workerThreads)
+	for (auto &th : workerThreads)
 	{
 		th->join();
-		delete th;
 		Log::d("DBQueue worker thread joined.");
 	}
 }
@@ -855,27 +849,26 @@ void DBQueue::addThread(int numThread, const MYSQL_CONFIG& config)
 	this->config = config;
 	for (int i = 0; i < numThread; i++)
 	{
-		std::thread* th(new std::thread(std::bind(&DBQueue::DBWorkThread, this, (int)workerThreads.size() + 1)));
-		workerThreads.push_back(th);
+		workerThreads.push_back(std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this, (int)workerThreads.size() + 1)));
 	}
 }
 
 void DBQueue::addQueueMsg(PtrDBRequest request)
 {
-	workMtx.lock();
+	std::lock_guard<std::mutex> lock(workMtx);
 	workQueue.push_back(request);
 	workQueueLength = workQueue.size();
-	workMtx.unlock();
 }
 
 // main thread
 void DBQueue::update()
 {
 	DBRequestList tmpQueue;
-	finishMtx.lock();
-	tmpQueue.swap(finishQueue);
-	finishMtx.unlock();
-
+	if (!finishQueue.empty())
+	{
+		std::lock_guard<std::mutex> lock(finishMtx);
+		tmpQueue.swap(finishQueue);
+	}
 	while (!tmpQueue.empty())
 	{
 		PtrDBRequest request = tmpQueue.front();
@@ -887,22 +880,20 @@ void DBQueue::update()
 PtrDBRequest DBQueue::getRequest()
 {
 	PtrDBRequest request(nullptr);
-	workMtx.lock();
+	std::lock_guard<std::mutex> lock(workMtx);
 	if (!workQueue.empty())
 	{
 		request = workQueue.front();
 		workQueue.pop_front();
 		workQueueLength = workQueue.size();
 	}
-	workMtx.unlock();
 	return request;
 }
 
 void DBQueue::finishRequest(PtrDBRequest request)
 {
-	finishMtx.lock();
+	std::lock_guard<std::mutex> lock(finishMtx);
 	finishQueue.push_back(request);
-	finishMtx.unlock();
 }
 
 void DBQueue::DBWorkThread(int id)
