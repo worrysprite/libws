@@ -64,7 +64,7 @@ namespace ws
 			rvalue.isAttached = false;
 		}
 
-		size_t ByteArray::readBytes(ByteArray& outBytes, unsigned int offset /*= 0*/, size_t length /*= 0*/) const
+		size_t ByteArray::readBytes(ByteArray& outBytes, size_t length /*= 0*/) const
 		{
 			if (length == 0 || length > readAvailable())	//读取数据量限制
 			{
@@ -72,9 +72,8 @@ namespace ws
 			}
 			if (length > 0)
 			{
-				outBytes.expand(length, offset);
-				void* pDst = (void*)((intptr_t)outBytes._data + offset);
-				memcpy(pDst, readerPointer(), length);
+				outBytes.expand(length, outBytes._writePos);
+				memcpy(outBytes.writerPointer(), readerPointer(), length);
 				outBytes._writePos += length;
 				_readPos += length;
 			}
@@ -99,7 +98,7 @@ namespace ws
 			return length;
 		}
 
-		std::string&& ByteArray::readString(size_t length) const
+		std::string ByteArray::readString(size_t length) const
 		{
 			if (length == 0 || length > readAvailable())
 			{
@@ -111,7 +110,7 @@ namespace ws
 				_readPos += length;
 				return std::move(str);
 			}
-			return std::move(std::string());
+			return std::string();
 		}
 
 		const ByteArray& ByteArray::operator>>(std::string& val) const
@@ -129,7 +128,7 @@ namespace ws
 			size_t newCap(_capacity);
 			while (pos + size > newCap)
 			{
-				newCap += BYTES_STEP_SIZE;
+				newCap = _capacity * 2;
 			}
 			if (newCap != _capacity)
 			{

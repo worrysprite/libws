@@ -5,13 +5,12 @@
 #include <mutex>
 #include <memory.h>
 
-constexpr auto BYTES_DEFAULT_SIZE = 4096;
-constexpr auto BYTES_STEP_SIZE = 4096;
-
 namespace ws
 {
 	namespace core
 	{
+		constexpr auto BYTES_DEFAULT_SIZE = 4096;
+
 		class ByteArray
 		{
 		public:
@@ -155,7 +154,7 @@ namespace ws
 			/* offset	从outBytes的offset位置开始写入                               */
 			/* length	要读取的内容大小                                             */
 			/************************************************************************/
-			size_t readBytes(ByteArray& outBytes, unsigned int offset = 0, size_t length = 0) const;
+			size_t readBytes(ByteArray& outBytes, size_t length = 0) const;
 			/************************************************************************/
 			/* 将数据读到一个内存块中                                                 */
 			/* outBuff	要读到的内存块                                               */
@@ -165,10 +164,10 @@ namespace ws
 			size_t readData(void* outData, size_t length = 0) const;
 
 			//读取length长度的内容作为字符串，若length=0则读完所有剩余内容
-			std::string&& readString(size_t length) const;
+			std::string readString(size_t length) const;
 
 			//先读取一个uint16_t作为字符串长度，再读取该长度的字符串
-			std::string&& readString() const
+			std::string readString() const
 			{
 				return readString(readUnsignedShort());
 			}

@@ -3,12 +3,12 @@
 
 using namespace ws::core;
 
-void EventDispatcher::removeEventListener(int type, const EventCallback* callback)
+void EventDispatcher::addEventListener(int type, const EventCallback* callback)
 {
 	listeners[type].insert(callback);
 }
 
-void EventDispatcher::addEventListener(int type, const EventCallback* callback)
+void EventDispatcher::removeEventListener(int type, const EventCallback* callback)
 {
 	auto iter = listeners.find(type);
 	if (iter != listeners.end())

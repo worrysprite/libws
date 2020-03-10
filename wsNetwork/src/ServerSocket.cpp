@@ -264,21 +264,7 @@ void ServerSocket::cleanup()
 	}
 	allClients.clear();
 	numClients = 0;
-	// clear all caches
-	for (auto ioData : ioDataPool)
-	{
-		if (ioData->acceptSocket)
-		{
-			closesocket(ioData->acceptSocket);
-		}
-	}
-	for (auto ioData : ioDataPosted)
-	{
-		if (ioData->acceptSocket)
-		{
-			closesocket(ioData->acceptSocket);
-		}
-	}
+
 	shutdown(listenSocket, SD_BOTH);
 	closesocket(listenSocket);
 	CloseHandle(completionPort);
@@ -302,10 +288,10 @@ void ServerSocket::flushClient(ClientPtr client)
 
 	while (remain > 0)
 	{
-		auto sendData = createOverlappedData(SocketOperation::SEND);
-		size_t length = client->writerBuffer.readData(sendData->buffer, BUFFER_SIZE);
-		sendData->wsabuff.len = (ULONG)length;
-		WSASend(client->socket, &(sendData->wsabuff), 1, NULL, 0, &(sendData->overlapped), NULL);
+		auto &sendData = createOverlappedData(SocketOperation::SEND);
+		size_t length = client->writerBuffer.readData(sendData.buffer, BUFFER_SIZE);
+		sendData.wsabuff.len = (ULONG)length;
+		WSASend(client->socket, &(sendData.wsabuff), 1, NULL, 0, &(sendData.overlapped), NULL);
 		if (length >= remain)
 		{
 			break;
@@ -316,16 +302,15 @@ void ServerSocket::flushClient(ClientPtr client)
 }
 
 // main thread and socket threads
-std::shared_ptr<ServerSocket::OverlappedData> ServerSocket::createOverlappedData(
-			SocketOperation operation, size_t size /*= BUFFER_SIZE*/, SOCKET acceptedSock /*= NULL*/)
+ServerSocket::OverlappedData& ServerSocket::createOverlappedData(SocketOperation operation,
+	size_t size /*= BUFFER_SIZE*/, Socket acceptedSock /*= NULL*/)
 {
-	std::shared_ptr<OverlappedData> ioData;
 	std::lock_guard<std::mutex> lock(ioDataPoolMtx);
-	ioData = ioDataPool.alloc();
+	auto ioData = ioDataPool.alloc();
 	ioData->wsabuff.buf = ioData->buffer;
 	initOverlappedData(*ioData, operation, size, acceptedSock);
-	ioDataPosted.push_back(ioData);
-	return ioData;
+	ioDataPosted.push_back(std::move(ioData));
+	return *ioDataPosted.back();
 }
 
 // socket threads
@@ -356,10 +341,10 @@ void ServerSocket::initOverlappedData(OverlappedData& data, SocketOperation oper
 int ServerSocket::postAcceptEx()
 {
 	SOCKET acceptSocket = WSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
-	auto ioData = createOverlappedData(SocketOperation::ACCEPT, BUFFER_SIZE, acceptSocket);
+	auto &ioData = createOverlappedData(SocketOperation::ACCEPT, BUFFER_SIZE, acceptSocket);
 	DWORD dwBytes = 0;
-	int result = lpfnAcceptEx(listenSocket, acceptSocket, ioData->buffer, 0,
-								ADDRESS_LENGTH, ADDRESS_LENGTH, &dwBytes, &(ioData->overlapped));
+	int result = lpfnAcceptEx(listenSocket, acceptSocket, ioData.buffer, 0,
+								ADDRESS_LENGTH, ADDRESS_LENGTH, &dwBytes, &(ioData.overlapped));
 	if (result == FALSE && WSAGetLastError() != ERROR_IO_PENDING)
 	{
 		Log::e("lpfnAcceptEx error.. %d", WSAGetLastError());
@@ -400,8 +385,8 @@ int ServerSocket::getAcceptedSocketAddress(char* buffer, sockaddr_in* addr)
 // main thread
 void ServerSocket::postCloseServer()
 {
-	auto ioData = createOverlappedData(SocketOperation::CLOSE_SERVER);
-	PostQueuedCompletionStatus(completionPort, 0, listenSocket, &(ioData->overlapped));
+	auto &ioData = createOverlappedData(SocketOperation::CLOSE_SERVER);
+	PostQueuedCompletionStatus(completionPort, 0, listenSocket, &(ioData.overlapped));
 }
 
 // main thread
@@ -1079,4 +1064,12 @@ uint16_t ServerSocket::getNextClientID()
 	}
 	while (allClients.find(nextID) != allClients.end());
 	return nextID;
+}
+
+ws::network::ServerSocket::OverlappedData::~OverlappedData()
+{
+	if (acceptSocket)
+	{
+		closesocket(acceptSocket);
+	}
 }

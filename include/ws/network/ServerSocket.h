@@ -9,7 +9,7 @@
 #include <functional>
 #include <vector>
 #include <set>
-#include <map>
+#include <unordered_map>
 
 #include "ws/network/NetDef.h"
 #include "ws/core/ByteArray.h"
@@ -87,12 +87,14 @@ namespace ws
 			bool										startListen();
 			bool										kickClient(uint32_t clientID);
 			ClientPtr									getClient(uint32_t clientID);
-			inline const std::map<uint16_t, ClientPtr>&	getAllClients() const { return allClients; }
 			inline uint16_t								numOnlines(){ return numClients; }
 			inline const ServerConfig&					getConfig(){ return config; }
 
 		protected:
-			std::map<uint16_t, ClientPtr>				allClients;
+			std::unordered_map<uint16_t, ClientPtr>		allClients;
+
+		public:
+			inline const decltype(allClients)&			getAllClients() const { return allClients; }
 
 		private:
 			ServerConfig								config;
@@ -123,6 +125,7 @@ namespace ws
 
 			struct OverlappedData
 			{
+				~OverlappedData();
 				OVERLAPPED overlapped;
 				WSABUF wsabuff;
 				char buffer[BUFFER_SIZE];
@@ -136,7 +139,7 @@ namespace ws
 			ObjectPool<OverlappedData> ioDataPool;
 			std::mutex ioDataPoolMtx;
 
-			std::list<std::shared_ptr<OverlappedData>> ioDataPosted;
+			std::list<std::unique_ptr<OverlappedData>> ioDataPosted;
 			std::list<std::unique_ptr<std::thread>> eventThreads;
 
 			bool initWinsock();
@@ -145,7 +148,7 @@ namespace ws
 			void postCloseServer();
 			void writeClientBuffer(Client& client, char* data, size_t size);
 
-			std::shared_ptr<OverlappedData> createOverlappedData(SocketOperation operation, size_t size = BUFFER_SIZE, Socket acceptedSock = NULL);
+			OverlappedData& createOverlappedData(SocketOperation operation, size_t size = BUFFER_SIZE, Socket acceptedSock = NULL);
 			void releaseOverlappedData(OverlappedData* data);
 			void initOverlappedData(OverlappedData& data, SocketOperation operation, size_t size = BUFFER_SIZE, Socket acceptedSock = NULL);
 

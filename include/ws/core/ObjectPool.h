@@ -10,55 +10,49 @@ namespace ws
 {
 	namespace core
 	{
-		template<class T>
+		template<class T, int capacity = 2000>
 		class ObjectPool
 		{
 		public:
-			ObjectPool<T>(size_t cap = 0xFFFFFFFF) : capacity(cap) {}
-
-			std::shared_ptr<T> alloc()
+			ObjectPool(int init = 200)
 			{
-				std::shared_ptr<T> obj;
+				for (int i = 0; i < init; ++i)
+				{
+					list.push_back(std::make_unique<T>());
+				}
+			}
+
+			std::unique_ptr<T> alloc()
+			{
+				std::unique_ptr<T> obj;
 				if (list.size() > 0)
 				{
-					obj = list.back();
+					obj = std::move(list.back());
 					list.pop_back();
 				}
 				else
 				{
-					obj = std::make_shared<T>();
+					obj = std::make_unique<T>();
 				}
 				return obj;
 			}
 
-			void free(std::shared_ptr<T> &obj)
+			void free(std::unique_ptr<T> &obj)
 			{
 				if (list.size() < capacity)
 				{
-					list.push_back(obj);
+					list.push_back(std::move(obj));
 				}
 				else
 				{
 					Log::w("object pool is full");
 				}
-				obj.reset();
-			}
-
-			typename std::list<std::shared_ptr<T>>::iterator begin()
-			{
-				return list.begin();
-			}
-
-			typename std::list<std::shared_ptr<T>>::iterator end()
-			{
-				return list.end();
 			}
 
 			size_t			size() { return list.size(); }
 
 		private:
-			std::list<std::shared_ptr<T>>	list;
-			size_t							capacity;
+			std::list<std::unique_ptr<T>>	list;
 		};
 	}
 }
