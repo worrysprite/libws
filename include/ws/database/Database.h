@@ -128,7 +128,7 @@ namespace ws
 			template<typename T>
 			Recordset&			getInt(T& value);
 		};
-		typedef std::shared_ptr<Recordset> PtrDBRecord;
+		typedef std::unique_ptr<Recordset> RecordsetPtr;
 
 		class DBRequest
 		{
@@ -182,7 +182,7 @@ namespace ws
 			/************************************************************************/
 			DBStatement*					prepare(const char* strSQL);
 			void							release(DBStatement* dbStmt);
-			PtrDBRecord						query(const char* strSQL, int nCommit = 1);
+			RecordsetPtr					query(const char* strSQL, int nCommit = 1);
 
 		protected:
 			static std::mutex					initMtx;
@@ -199,10 +199,10 @@ namespace ws
 		class DBQueue
 		{
 		public:
-			DBQueue() : isExit(false), workQueueLength(0) {}
+			DBQueue(const MYSQL_CONFIG& cfg) : config(cfg), isExit(false), workQueueLength(0) {}
 			virtual ~DBQueue();
 
-			void				addThread(int numThread, const MYSQL_CONFIG& config);
+			void				setThread(int numThread);
 			void				addQueueMsg(PtrDBRequest request);
 			void				update();
 			inline size_t		getQueueLength(){ return workQueueLength; }

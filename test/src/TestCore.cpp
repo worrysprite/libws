@@ -81,6 +81,7 @@ bool testByteArray()
 	ByteArray bytes;
 	bytes << ts1.i8 << ts1.u8 << ts1.i16 << ts1.u16 << ts1.i32 << ts1.u32 << ts1.i64 << ts1.u64;
 	std::cout << "sizeof bytes: " << bytes.size() << std::endl;
+	std::cout << std::endl;
 	return true;
 }
 

@@ -737,9 +737,9 @@ void Database::changeDatabase(const char* db)
 	}
 }
 
-std::shared_ptr<Recordset> Database::query(const char* strSQL, int nCommit /*= 1*/)
+RecordsetPtr Database::query(const char* strSQL, int nCommit /*= 1*/)
 {
-	Recordset* pRecordset = nullptr;
+	RecordsetPtr record;
 	const char* pError = NULL;
 	if (mysql_query(mysql, strSQL) == 0)
 	{
@@ -753,7 +753,7 @@ std::shared_ptr<Recordset> Database::query(const char* strSQL, int nCommit /*= 1
 			numResultRows = mysql_num_rows(pMysqlRes);
 			if (numResultRows > 0)
 			{
-				pRecordset = new Recordset(pMysqlRes);
+				record = std::make_unique<Recordset>(pMysqlRes);
 			}
 			else
 			{
@@ -776,7 +776,7 @@ std::shared_ptr<Recordset> Database::query(const char* strSQL, int nCommit /*= 1
 			Log::e("DBError: %s, SQL: %s", pError, strSQL);
 		}
 	}
-	return std::shared_ptr<Recordset>(pRecordset);
+	return record;
 }
 
 DBStatement* Database::prepare(const char* strSQL)
@@ -844,12 +844,24 @@ DBQueue::~DBQueue()
 	}
 }
 
-void DBQueue::addThread(int numThread, const MYSQL_CONFIG& config)
+void DBQueue::setThread(int numThread)
 {
-	this->config = config;
-	for (int i = 0; i < numThread; i++)
+	if (workerThreads.size() < numThread)
 	{
-		workerThreads.push_back(std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this, (int)workerThreads.size() + 1)));
+		//add more threads
+		for (int i = workerThreads.size(); i < numThread; i++)
+		{
+			workerThreads.push_back(std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this, (int)workerThreads.size() + 1)));
+		}
+	}
+	else
+	{
+		//remove threads
+		while (workerThreads.size() > numThread)
+		{
+			workerThreads.back()->detach();
+			workerThreads.pop_back();
+		}
 	}
 }
 
@@ -901,7 +913,7 @@ void DBQueue::DBWorkThread(int id)
 	Database db(id);
 	db.setDBConfig(config);
 	PtrDBRequest request;
-	const std::chrono::milliseconds requestWait(50);
+	const std::chrono::milliseconds requestWait(100);
 	const std::chrono::microseconds connectWait(500);
 	while (!this->isExit)
 	{

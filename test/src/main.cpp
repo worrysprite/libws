@@ -4,12 +4,14 @@
 extern bool testSignal();
 extern bool testEvent();
 extern bool testByteArray();
+extern bool testDatabase();
 
 int main()
 {
 	assert(testSignal());
 	assert(testEvent());
 	assert(testByteArray());
+	assert(testDatabase());
 
 	std::cout << "all tests passed!" << std::endl;
 
