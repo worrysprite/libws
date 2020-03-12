@@ -6,18 +6,20 @@
 #include <math.h>
 #include <algorithm>
 
-constexpr double MATH_PI = 3.14159265358979323846;
-constexpr double RAD_PER_ANGLE = 0.01745329251994329577;
-
 #pragma warning(disable:26451)
 
 namespace ws
 {
 	namespace core
 	{
+
 		class Math
 		{
 		public:
+			static const double PI;
+			static const double HALF_PI;
+			static const double RAD_PER_ANGLE;
+
 			/************************************************************************/
 			/* 产生一个在[0,1)区间的随机浮点数                                        */
 			/************************************************************************/
@@ -41,17 +43,21 @@ namespace ws
 			static std::mt19937							randomGenerator;
 		};
 
+		template<typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
 		class Vector2D
 		{
 		public:
-			Vector2D(double x_ = 0.0, double y_ = 0.0) :x(x_), y(y_){}
-			double				x;
-			double				y;
+			Vector2D(T x_ = 0, T y_ = 0) :x(x_), y(y_){}
+			T				x;
+			T				y;
 
-			inline void						zero(){ x = 0.0; y = 0.0; }
+			//清零
+			inline void zero(){ x = 0; y = 0; }
 
-			inline double					getLength(){ return sqrt(x * x + y * y); }
-			inline Vector2D&				setLength(double value)
+			//获取长度
+			inline double getLength(){ return sqrt(x * x + y * y); }
+			//设置长度
+			inline Vector2D& setLength(double value)
 			{
 				double angle(getAngle());
 				x = cos(angle) * value;
@@ -59,8 +65,10 @@ namespace ws
 				return *this;
 			}
 
-			inline double					getAngle(){ return atan2(y, x); }
-			inline Vector2D&				setAngle(double value)
+			//获取角度
+			inline double getAngle(){ return atan2(y, x); }
+			//设置角度
+			inline Vector2D& setAngle(double value)
 			{
 				double length(getLength());
 				x = cos(value) * length;
@@ -68,7 +76,8 @@ namespace ws
 				return *this;
 			}
 
-			Vector2D&						normalize()
+			//标准化
+			Vector2D& normalize()
 			{
 				double length(getLength());
 				if (length == 0.0)
@@ -83,12 +92,14 @@ namespace ws
 				return *this;
 			}
 
-			inline Vector2D&						truncate(double value)
+			//截断
+			inline Vector2D& truncate(double value)
 			{
 				return setLength(std::min<double>(value, getLength()));
 			}
 
-			inline Vector2D&						reverse()
+			//反向
+			inline Vector2D& reverse()
 			{
 				x = -x;
 				y = -y;
@@ -101,6 +112,7 @@ namespace ws
 			inline Vector2D operator*(double value){ return Vector2D(x * value, y * value); }
 			inline Vector2D operator/(double value){ return Vector2D(x / value, y / value); }
 			inline bool operator==(const Vector2D& other) const { return x == other.x && y == other.y; }
+
 			Vector2D& operator+=(const Vector2D& other)
 			{
 				x += other.x;
@@ -114,17 +126,31 @@ namespace ws
 				return *this;
 			}
 
+			//点乘
 			double dotProduct(const Vector2D& other){ return x * other.x + y * other.y; }
+			//叉乘
 			double crossProduct(const Vector2D& other){ return x * other.y - y * other.x; }
-			int sign(const Vector2D& other){ return crossProduct(other) < 0 ? -1 : 1; }
+			//获取与另一个向量的角度关系，平行返回0，正旋转角度<180返回1，正旋转角度>180返回-1
+			int sign(const Vector2D& other)
+			{
+				double cp = crossProduct(other);
+				if (cp == 0)
+				{
+					return 0;
+				}
+				return cp < 0 ? -1 : 1;
+			}
+			//获取垂直向量
 			Vector2D getPerpendicular(){ return Vector2D(-y, x); }
+			//获取与另一个向量（点）的距离
 			double distance(const Vector2D& other)
 			{
-				double dx = other.x - x;
-				double dy = other.y - y;
+				T dx = other.x - x;
+				T dy = other.y - y;
 				return sqrt(dx * dx + dy * dy);
 			}
 
+			//获取两向量的夹角
 			static double angleBetween(Vector2D v1, Vector2D v2)
 			{
 				v1.normalize();

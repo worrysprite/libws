@@ -137,7 +137,7 @@ namespace ws
 			virtual void onRequest(Database& db) = 0;
 			virtual void onFinish() = 0;
 		};
-		typedef std::shared_ptr<DBRequest> PtrDBRequest;
+		typedef std::shared_ptr<DBRequest> DBRequestPtr;
 
 		class Database
 		{
@@ -196,21 +196,26 @@ namespace ws
 			int									id;
 		};
 
+		//数据库队列
 		class DBQueue
 		{
 		public:
 			DBQueue(const MYSQL_CONFIG& cfg) : config(cfg), isExit(false), workQueueLength(0) {}
 			virtual ~DBQueue();
 
+			//设置数据库并发线程数
 			void				setThread(int numThread);
-			void				addQueueMsg(PtrDBRequest request);
+			//添加一个数据库请求到队列
+			void				addRequest(DBRequestPtr request);
+			//业务线程通过update完成数据库请求，获取结果
 			void				update();
+			//获取队列长度
 			inline size_t		getQueueLength(){ return workQueueLength; }
 
 		private:
-			typedef std::list<PtrDBRequest> DBRequestList;
-			PtrDBRequest		getRequest();
-			void				finishRequest(PtrDBRequest request);
+			typedef std::list<DBRequestPtr> DBRequestList;
+			DBRequestPtr		getRequest();
+			void				finishRequest(DBRequestPtr request);
 			void				DBWorkThread(int id);
 
 			MYSQL_CONFIG				config;

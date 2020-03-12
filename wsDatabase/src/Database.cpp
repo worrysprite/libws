@@ -8,7 +8,7 @@
 using namespace ws::database;
 
 //===================== Recordset Implements ========================
-Recordset::Recordset(MYSQL_RES* pMysqlRes) :mysqlRes(pMysqlRes)
+Recordset::Recordset(MYSQL_RES* pMysqlRes) : fieldIndex(0), mysqlRes(pMysqlRes)
 {
 	numFields = mysql_num_fields(mysqlRes);
 	mysqlRow = NULL;
@@ -22,7 +22,7 @@ Recordset::~Recordset()
 
 bool Recordset::nextRow()
 {
-	fieldIndex = 0x00;
+	fieldIndex = 0;
 	mysqlRow = mysql_fetch_row(mysqlRes);
 	return (mysqlRow != NULL);
 }
@@ -213,7 +213,7 @@ void Recordset::skipFields(int num)
 
 //===================== MysqlStatement Implements ========================
 
-DBStatement::DBStatement(const char* sql, MYSQL_STMT* mysql_stmt) :
+DBStatement::DBStatement(const char* sql, MYSQL_STMT* mysql_stmt) : resultIndex(0),
 	_strSQL(sql), stmt(mysql_stmt), paramBind(nullptr), paramIndex(0), _numParams(0), paramsBuffer(nullptr),
 	_numResultFields(0), resultBind(nullptr), resultMetadata(nullptr), _numRows(0), _lastInsertId(0)
 {
@@ -651,7 +651,7 @@ void* DBStatement::getBlob(unsigned long& datasize)
 	datasize = *resultBind[resultIndex].length;
 	if (resultIndex < _numResultFields)
 	{
-		void* data(nullptr);
+		void* data = nullptr;
 		if (!(*resultBind[resultIndex].is_null) && datasize > 0)
 		{
 			data = malloc(datasize);
@@ -849,7 +849,7 @@ void DBQueue::setThread(int numThread)
 	if (workerThreads.size() < numThread)
 	{
 		//add more threads
-		for (int i = workerThreads.size(); i < numThread; i++)
+		for (int i = (int)workerThreads.size(); i < numThread; i++)
 		{
 			workerThreads.push_back(std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this, (int)workerThreads.size() + 1)));
 		}
@@ -865,7 +865,7 @@ void DBQueue::setThread(int numThread)
 	}
 }
 
-void DBQueue::addQueueMsg(PtrDBRequest request)
+void DBQueue::addRequest(DBRequestPtr request)
 {
 	std::lock_guard<std::mutex> lock(workMtx);
 	workQueue.push_back(request);
@@ -883,15 +883,15 @@ void DBQueue::update()
 	}
 	while (!tmpQueue.empty())
 	{
-		PtrDBRequest request = tmpQueue.front();
+		DBRequestPtr request = tmpQueue.front();
 		tmpQueue.pop_front();
 		request->onFinish();
 	}
 }
 
-PtrDBRequest DBQueue::getRequest()
+DBRequestPtr DBQueue::getRequest()
 {
-	PtrDBRequest request(nullptr);
+	DBRequestPtr request(nullptr);
 	std::lock_guard<std::mutex> lock(workMtx);
 	if (!workQueue.empty())
 	{
@@ -902,7 +902,7 @@ PtrDBRequest DBQueue::getRequest()
 	return request;
 }
 
-void DBQueue::finishRequest(PtrDBRequest request)
+void DBQueue::finishRequest(DBRequestPtr request)
 {
 	std::lock_guard<std::mutex> lock(finishMtx);
 	finishQueue.push_back(request);
@@ -912,7 +912,7 @@ void DBQueue::DBWorkThread(int id)
 {
 	Database db(id);
 	db.setDBConfig(config);
-	PtrDBRequest request;
+	DBRequestPtr request;
 	const std::chrono::milliseconds requestWait(100);
 	const std::chrono::microseconds connectWait(500);
 	while (!this->isExit)

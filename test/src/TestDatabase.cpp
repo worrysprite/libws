@@ -15,6 +15,7 @@ public:
 		callback = cb;
 	}
 
+private:
 	virtual void onRequest(Database& db)
 	{
 		auto record = db.query("SELECT COUNT(*) FROM test_table");
@@ -56,7 +57,7 @@ bool testDatabase()
 		std::cout << "TestQuery result=" << result << std::endl;
 		isComplete = true;
 	});
-	queue.addQueueMsg(query);
+	queue.addRequest(query);
 
 	while (!isComplete)
 	{

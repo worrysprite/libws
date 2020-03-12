@@ -3,6 +3,7 @@
 #include "ws/core/Event.h"
 #include "ws/core/ByteArray.h"
 #include "ws/core/Utils.h"
+#include "ws/core/Math.h"
 
 using namespace ws::core;
 
@@ -85,3 +86,26 @@ bool testByteArray()
 	return true;
 }
 
+bool testMath()
+{
+	std::cout << "====================Test Math====================" << std::endl;
+	auto num1 = Math::random();
+	std::cout << "random of [0, 1) =" << num1 << std::endl;
+
+	auto num2 = Math::random(1, 100);
+	std::cout << "random of [1, 100] =" << num2 << std::endl;
+
+	std::cout << "half PI =" << Math::HALF_PI << std::endl;
+
+	Vector2D<double> v1(3, 4);
+	std::cout << "length of Vector2D(3, 4) =" << v1.getLength() << std::endl;
+
+	Vector2D<double> v2(-4, 3);
+	std::cout << "angle between Vector2D(3, 4) and Vector2D(-4, 3) =" << Vector2D<double>::angleBetween(v1, v2) << std::endl;
+
+
+	
+
+	std::cout << std::endl;
+	return true;
+}
