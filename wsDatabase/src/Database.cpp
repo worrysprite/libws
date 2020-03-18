@@ -213,8 +213,8 @@ void Recordset::skipFields(int num)
 
 //===================== MysqlStatement Implements ========================
 
-DBStatement::DBStatement(const char* sql, MYSQL_STMT* mysql_stmt) : resultIndex(0),
-	_strSQL(sql), stmt(mysql_stmt), paramBind(nullptr), paramIndex(0), _numParams(0), paramsBuffer(nullptr),
+DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) : resultIndex(0),
+	_sql(sql), stmt(mysql_stmt), paramBind(nullptr), paramIndex(0), _numParams(0), paramsBuffer(nullptr),
 	_numResultFields(0), resultBind(nullptr), resultMetadata(nullptr), _numRows(0), _lastInsertId(0)
 {
 	// bind params
@@ -328,7 +328,7 @@ DBStatement& DBStatement::bindNumberParam(T& value, enum_field_types type, bool 
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _strSQL.c_str());
+		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
 	}
 	return *this;
 }
@@ -398,7 +398,7 @@ DBStatement& DBStatement::operator<<(const std::string& value)
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _strSQL.c_str());
+		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
 	}
 	return *this;
 }
@@ -418,7 +418,7 @@ DBStatement& DBStatement::operator<<(ByteArray& value)
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _strSQL.c_str());
+		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
 	}
 	return *this;
 }
@@ -436,7 +436,7 @@ DBStatement& DBStatement::bindString(const char* value, unsigned long* length)
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _strSQL.c_str());
+		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
 	}
 	return *this;
 }
@@ -461,7 +461,7 @@ void DBStatement::bindBlob(enum_field_types type, void* data, unsigned long* siz
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _strSQL.c_str());
+		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
 	}
 }
 
@@ -479,7 +479,7 @@ bool DBStatement::execute()
 	}
 	if (mysql_stmt_execute(stmt))
 	{
-		Log::e("mysql execute failed: %s, sql=%s", mysql_stmt_error(stmt), strSQL());
+		Log::e("mysql execute failed: %s, sql=%s", mysql_stmt_error(stmt), _sql.c_str());
 		return false;
 	}
 	if (resultMetadata)
@@ -506,7 +506,7 @@ bool DBStatement::nextRow()
 	case MYSQL_NO_DATA:
 		return false;
 	case MYSQL_DATA_TRUNCATED:
-		Log::w("mysql fetch truncated! sql=%s", strSQL());
+		Log::w("mysql fetch truncated! sql=%s", _sql.c_str());
 		return true;
 	default:
 		Log::e("mysql fetch error: %s", mysql_stmt_error(stmt));
@@ -552,7 +552,7 @@ DBStatement& DBStatement::getNumberValue(T& value)
 	}
 	else
 	{
-		Log::e("mysql get result out of range! sql=%s", strSQL());
+		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
 	}
 	return *this;
 }
@@ -623,7 +623,7 @@ DBStatement& DBStatement::operator>>(std::string& value)
 	}
 	else
 	{
-		Log::e("mysql get result out of range! sql=%s", strSQL());
+		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
 	}
 	return *this;
 }
@@ -641,7 +641,7 @@ DBStatement& DBStatement::operator>>(ByteArray& value)
 	}
 	else
 	{
-		Log::e("mysql get result out of range! sql=%s", strSQL());
+		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
 	}
 	return *this;
 }
@@ -662,7 +662,7 @@ void* DBStatement::getBlob(unsigned long& datasize)
 	}
 	else
 	{
-		Log::e("mysql get result out of range! sql=%s", strSQL());
+		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
 		return nullptr;
 	}
 }
@@ -715,10 +715,6 @@ void Database::logoff()
 
 		for (auto &cache : stmtCache)
 		{
-			for (auto stmt : *cache.second)
-			{
-				delete stmt;
-			}
 			delete cache.second;
 		}
 		stmtCache.clear();
@@ -779,53 +775,39 @@ RecordsetPtr Database::query(const char* strSQL, int nCommit /*= 1*/)
 	return record;
 }
 
-DBStatement* Database::prepare(const char* strSQL)
+DBStatement* Database::prepare(const std::string& sql)
 {
-	auto iter = stmtCache.find(std::string(strSQL));
-	DBStatement* dbStmt(nullptr);
+	DBStatement* dbStmt = nullptr;
+	auto iter = stmtCache.find(sql);
 	if (iter != stmtCache.end())
 	{
-		auto pool = iter->second;
-		if (pool->size())
-		{
-			dbStmt = pool->back();
-			pool->pop_back();
-		}
-	}
-	if (dbStmt)
-	{
-		return dbStmt;
-	}
-	MYSQL_STMT* stmt = mysql_stmt_init(mysql);
-	if (0 != mysql_stmt_prepare(stmt, strSQL, (unsigned long)strlen(strSQL)))
-	{
-		Log::e("mysql prepare error, sql=%s, error=%s", strSQL, mysql_stmt_error(stmt));
-		mysql_stmt_close(stmt);
-		return NULL;
-	}
-	return new DBStatement(strSQL, stmt);
-}
-
-void Database::release(DBStatement* dbStmt)
-{
-	if (!dbStmt)
-	{
-		return;
-	}
-	std::string sql(dbStmt->strSQL());
-	dbStmt->reset();
-	auto iter = stmtCache.find(sql);
-	StmtPool* pool(nullptr);
-	if (iter == stmtCache.end())
-	{
-		pool = new StmtPool;
-		stmtCache.insert(std::make_pair(sql, pool));
+		dbStmt = iter->second;
+		dbStmt->reset();
 	}
 	else
 	{
-		pool = iter->second;
+		MYSQL_STMT* stmt = mysql_stmt_init(mysql);
+		if (0 != mysql_stmt_prepare(stmt, sql.c_str(), (unsigned long)sql.length()))
+		{
+			Log::e("mysql prepare error, sql=%s, error=%s", sql.c_str(), mysql_stmt_error(stmt));
+			mysql_stmt_close(stmt);
+			return nullptr;
+		}
+
+		dbStmt = new DBStatement(sql, stmt);
+		stmtCache.insert(std::make_pair(sql, dbStmt));
 	}
-	pool->push_back(dbStmt);
+	return dbStmt;
+}
+
+void Database::freeStatement(const std::string& sql)
+{
+	auto iter = stmtCache.find(sql);
+	if (iter != stmtCache.end())
+	{
+		delete iter->second;
+		stmtCache.erase(iter);
+	}
 }
 
 //===================== DBRequestQueue Implements ========================

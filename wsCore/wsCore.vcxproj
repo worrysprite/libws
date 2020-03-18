@@ -146,6 +146,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\AStar.cpp" />
     <ClCompile Include="src\ByteArray.cpp" />
     <ClCompile Include="src\Event.cpp" />
     <ClCompile Include="src\Log.cpp" />
@@ -154,6 +155,7 @@
     <ClCompile Include="src\String.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\ws\core\AStar.h" />
     <ClInclude Include="..\include\ws\core\ByteArray.h" />
     <ClInclude Include="..\include\ws\core\Event.h" />
     <ClInclude Include="..\include\ws\core\Log.h" />

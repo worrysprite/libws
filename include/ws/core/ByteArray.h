@@ -267,6 +267,8 @@ namespace ws
 			void writeBytes(const ByteArray& inBytes, size_t offset = 0, size_t length = 0);
 			//写入指定数据
 			void writeData(const void* inData, size_t length);
+			//写入length长度的空数据(\0)
+			void writeEmptyData(size_t length);
 
 			template<typename T>
 			ByteArray& writeType(const T& val)

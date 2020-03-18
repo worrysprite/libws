@@ -32,7 +32,13 @@ namespace ws
 			/************************************************************************/
 			/* 产生一个在[start,end]区间的随机整数                                    */
 			/************************************************************************/
-			inline static int32_t						random(int32_t start, int32_t end){ return (int32_t)(start + random() * (end - start + 1)); }
+			inline static int32_t						random(int32_t start, int32_t end)
+			{
+				if (start <= end)
+					return (int32_t)(start + random(end - start + 1));
+				else
+					return (int32_t)(end + random(start - end + 1));
+			}
 			/************************************************************************/
 			/* 判断一个概率是否触发，默认按万分比计算                                  */
 			/************************************************************************/
@@ -157,6 +163,16 @@ namespace ws
 				v2.normalize();
 				return acos(v1.dotProduct(v2));
 			}
+		};
+
+		template<typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
+		class Rectangle
+		{
+		public:
+			T		x;
+			T		y;
+			T		width;
+			T		height;
 		};
 	}
 }

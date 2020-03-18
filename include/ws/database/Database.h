@@ -4,7 +4,7 @@
 #include <mysql.h>
 #include <string>
 #include <list>
-#include <map>
+#include <unordered_map>
 #include <mutex>
 #include <vector>
 #include <thread>
@@ -35,7 +35,7 @@ namespace ws
 		{
 			friend class Database;
 		public:
-			DBStatement(const char* sql, MYSQL_STMT* mysql_stmt);
+			DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt);
 			~DBStatement();
 
 			template<typename T>
@@ -80,7 +80,7 @@ namespace ws
 			inline int numResultFields(){ return _numResultFields; }
 			inline my_ulonglong numRows(){ return _numRows; }
 			inline my_ulonglong lastInsertId(){ return _lastInsertId; }
-			inline const char* strSQL(){ return _strSQL.c_str(); }
+			inline const std::string& sql() const { return _sql; }
 
 		private:
 			int				paramIndex;
@@ -89,7 +89,7 @@ namespace ws
 			int				_numResultFields;
 			my_ulonglong	_numRows;
 			my_ulonglong	_lastInsertId;
-			std::string		_strSQL;
+			std::string		_sql;
 			MYSQL_STMT*		stmt;
 			MYSQL_BIND*		paramBind;
 			MYSQL_BIND*		resultBind;
@@ -180,20 +180,21 @@ namespace ws
 			/************************************************************************/
 			/* prepare a statement for query                                        */
 			/************************************************************************/
-			DBStatement*					prepare(const char* strSQL);
-			void							release(DBStatement* dbStmt);
+			DBStatement*					prepare(const std::string& sql);
+			// dealloc a statement
+			void							freeStatement(const std::string& sql);
+			// execute sql query
 			RecordsetPtr					query(const char* strSQL, int nCommit = 1);
 
 		protected:
-			static std::mutex					initMtx;
-			MYSQL_CONFIG						dbConfig;
-			MYSQL*								mysql;
-			my_ulonglong						numAffectedRows;
-			my_ulonglong						numResultRows;
-			bool								_hasError;
-			typedef std::list<DBStatement*>		StmtPool;
-			std::map<std::string, StmtPool*>	stmtCache;
-			int									id;
+			static std::mutex								initMtx;
+			MYSQL_CONFIG									dbConfig;
+			MYSQL*											mysql;
+			my_ulonglong									numAffectedRows;
+			my_ulonglong									numResultRows;
+			bool											_hasError;
+			std::unordered_map<std::string, DBStatement*>	stmtCache;
+			int												id;
 		};
 
 		//数据库队列

@@ -4,6 +4,7 @@
 #include "ws/core/ByteArray.h"
 #include "ws/core/Utils.h"
 #include "ws/core/Math.h"
+#include "ws/core/AStar.h"
 
 using namespace ws::core;
 
@@ -108,4 +109,85 @@ bool testMath()
 
 	std::cout << std::endl;
 	return true;
+}
+
+bool testAStar()
+{
+	constexpr int WIDTH = 75;
+	constexpr int HEIGHT = 100;
+
+	bool blockData[HEIGHT][WIDTH] = {
+#include "testmap"
+	};
+
+	class GameMap : public AbstractMap
+	{
+	public:
+		GameMap(bool* blocks, int w, int h) : map(blocks), width(w), height(h) {}
+
+		//地图宽
+		virtual int getWidth() const override { return width; }
+		//地图高
+		virtual int getHeight() const override { return height; }
+		//点x,y是否阻挡
+		virtual bool isBlock(int x, int y) const override
+		{
+			if (x < 0 || x >= width || y < 0 || y >= height)
+				return false;	//out of range
+
+			return map[y * width + x];
+		}
+
+	private:
+		int width;
+		int height;
+		bool* map;
+	};
+
+	GameMap map((bool*)blockData, WIDTH, HEIGHT);
+
+	char graph[HEIGHT][WIDTH + 5] = { 0 };
+	for (int y = 0; y < HEIGHT; ++y)
+	{
+		sprintf(graph[y], "%03d ", y);
+		for (int x = 0; x < WIDTH; ++x)
+		{
+			if (map.isBlock(x, y))
+			{
+				graph[y][x + 4] = '#';
+			}
+			else
+			{
+				graph[y][x + 4] = ' ';
+			}
+		}
+		//std::cout << graph[y] << std::endl;
+	}
+
+	graph[71][28 + 4] = 'S';
+	graph[64][51 + 4] = 'E';
+
+	AStar astar;
+	if (astar.findPath(map, 28, 71, 51, 64))
+	{
+		auto& path = astar.getLastPath();
+		std::cout << "find path success, num path nodes: " << path.size() << std::endl;
+
+		for (auto node : path)
+		{
+			graph[node->y][node->x + 4] = '*';
+		}
+		for (int y = 0; y < HEIGHT; ++y)
+		{
+			std::cout << graph[y] << std::endl;
+		}
+		return true;
+	}
+
+	if (!astar.findPath(map, 28, 71, 30, 52))
+	{
+		auto& path = astar.getLastPath();
+		std::cout << "find path failed, num path nodes: " << path.size() << std::endl;
+	}
+	return false;
 }

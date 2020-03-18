@@ -18,7 +18,7 @@ public:
 private:
 	virtual void onRequest(Database& db)
 	{
-		auto record = db.query("SELECT COUNT(*) FROM test_table");
+		auto record = db.query("SELECT COUNT(*) FROM `TABLES`");
 		if (record && record->nextRow())
 		{
 			*record >> result;
@@ -42,8 +42,8 @@ bool testDatabase()
 	dbConfig.strHost = "127.0.0.1";
 	dbConfig.nPort = 3306;
 	dbConfig.strUser = "root";
-	dbConfig.strPassword = "123456";
-	dbConfig.strDB = "testdb";
+	dbConfig.strPassword = "";
+	dbConfig.strDB = "information_schema";
 #if defined(__linux__) || defined(__APPLE__)
 	dbConfig.strUnixSock = "/tmp/mysql.sock";
 #endif

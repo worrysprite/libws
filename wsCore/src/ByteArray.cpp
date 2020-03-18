@@ -182,6 +182,16 @@ namespace ws
 			_writePos += length;
 		}
 
+		void ByteArray::writeEmptyData(size_t length)
+		{
+			if (readOnly() || !length)
+				return;
+
+			expand(length, _writePos);
+			memset(writerPointer(), 0, length);
+			_writePos += length;
+		}
+
 		ByteArray& ByteArray::operator<<(const std::string& val)
 		{
 			uint16_t len = (uint16_t)val.size();
