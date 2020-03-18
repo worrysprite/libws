@@ -46,7 +46,7 @@ namespace ws
 			//寻路，返回是否成功
 			bool findPath(const AbstractMap& map, int startX, int startY, int endX, int endY);
 			//获取上次寻路的结果
-			const std::list<PathNode*>& getLastPath() const { return lastPath; }
+			const std::list<const PathNode*>& getLastPath() const { return lastPath; }
 
 			//计算估值函数，参数起点x,y 终点x,y 返回估值
 			std::function<double(int, int, int, int)>			heuristic;
@@ -57,8 +57,8 @@ namespace ws
 			int					count;		//搜索次数
 			int					maxCount;	//搜索次数上限
 
-			std::list<PathNode*>	openList;
-			std::list<PathNode*>	lastPath;
+			std::list<PathNode*>		openList;
+			std::list<const PathNode*>	lastPath;
 
 			std::vector<PathNode*>	mapNodes;
 

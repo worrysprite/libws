@@ -132,7 +132,7 @@ namespace ws
 				}
 			}
 			openList.clear();
-			return true;
+			return !lastPath.empty();
 		}
 
 		void AStar::resizeMap(int w, int h)

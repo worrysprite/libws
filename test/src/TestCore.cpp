@@ -181,13 +181,18 @@ bool testAStar()
 		{
 			std::cout << graph[y] << std::endl;
 		}
-		return true;
+	}
+	else
+	{
+		std::cout << "find path failed!" << std::endl;
+		return false;
 	}
 
-	if (!astar.findPath(map, 28, 71, 30, 52))
+	if (!astar.findPath(map, 28, 71, 30, 52))	//can not move from start to end
 	{
 		auto& path = astar.getLastPath();
-		std::cout << "find path failed, num path nodes: " << path.size() << std::endl;
+		std::cout << "path not found, num path nodes: " << path.size() << std::endl;
+		return true;
 	}
 	return false;
 }
