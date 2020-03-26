@@ -6,6 +6,7 @@ extern bool testEvent();
 extern bool testByteArray();
 extern bool testMath();
 extern bool testAStar();
+extern bool testEnum();
 extern bool testDatabase();
 
 int main()
@@ -15,6 +16,7 @@ int main()
 	assert(testByteArray());
 	assert(testMath());
 	assert(testAStar());
+	assert(testEnum());
 	assert(testDatabase());
 
 	std::cout << "all tests passed!" << std::endl;

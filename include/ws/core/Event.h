@@ -18,6 +18,14 @@ namespace ws
 
 		typedef std::function<void(const Event&)> EventCallback;
 
+		struct EventListener
+		{
+			virtual ~EventListener() {}
+			virtual void onEvent(const Event& evt) = 0;
+
+			void operator()(const Event& evt) { onEvent(evt); };
+		};
+
 		class EventDispatcher
 		{
 		public:

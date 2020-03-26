@@ -49,6 +49,18 @@ namespace ws
 				}
 			}
 
+			void free(std::unique_ptr<T>&& obj)
+			{
+				if (list.size() < capacity)
+				{
+					list.push_back(std::move(obj));
+				}
+				else
+				{
+					Log::w("object pool is full");
+				}
+			}
+
 			size_t			size() { return list.size(); }
 
 		private:

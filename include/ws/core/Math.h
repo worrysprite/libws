@@ -35,9 +35,9 @@ namespace ws
 			inline static int32_t						random(int32_t start, int32_t end)
 			{
 				if (start <= end)
-					return (int32_t)(start + random(end - start + 1));
+					return start + (int32_t)random(end - start + 1);
 				else
-					return (int32_t)(end + random(start - end + 1));
+					return end + (int32_t)random(start - end + 1);
 			}
 			/************************************************************************/
 			/* 判断一个概率是否触发，默认按万分比计算                                  */

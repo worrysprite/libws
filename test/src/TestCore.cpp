@@ -36,6 +36,8 @@ bool testEvent()
 {
 	std::cout << "====================Test Event====================" << std::endl;
 	EventDispatcher dispatcher;
+
+	// test with function
 	std::function<void(const Event&)> cb = [](const Event& evt)
 	{
 		std::cout << "Trigger event, type=" << evt.type << std::endl;
@@ -44,9 +46,22 @@ bool testEvent()
 	dispatcher.addEventListener(1, &cb);
 	Event evt(1);
 	dispatcher.dispatchEvent(evt);
-
 	dispatcher.removeEventListener(1, &cb);
+
+	// test with interface class
+	struct Listener : public EventListener
+	{
+		virtual void onEvent(const Event& evt) override
+		{
+			std::cout << "Trigger event, type=" << evt.type << std::endl;
+		}
+	} listener;
+	EventCallback cb2(listener);
+	dispatcher.addEventListener(2, &cb2);
+
+	evt.type = 2;
 	dispatcher.dispatchEvent(evt);
+	dispatcher.removeEventListener(2, &cb2);
 	std::cout << std::endl;
 	return true;
 }
@@ -195,4 +210,34 @@ bool testAStar()
 		return true;
 	}
 	return false;
+}
+
+enum class Permissions : uint8_t
+{
+	READ = 0x4,
+	WRITE = 0x2,
+	EXECUTE = 0x1,
+
+	ENABLE_BITMASK = 1
+};
+ENABLE_BITMASK_OPERATORS(Permissions);
+
+enum class FileOperation : uint8_t
+{
+	MIN,
+	READ = MIN,
+	WRITE,
+	MAX
+};
+
+bool testEnum()
+{
+	Permissions p = Permissions::READ;
+	p = p | Permissions::WRITE;
+	p |= Permissions::EXECUTE;
+	std::cout << "enum Permissions bitmask operation result: " << (int)p << std::endl;
+
+	std::cout << "enum FileOperation validate 1 result: " << validateEnum<FileOperation>(1) << std::endl;
+	std::cout << "enum FileOperation validate 5 result: " << validateEnum<FileOperation>(5) << std::endl;
+	return true;
 }
