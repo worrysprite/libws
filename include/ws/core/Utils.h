@@ -93,7 +93,8 @@ struct EnableBitMaskOperators<x>	\
  * 验证枚举值的合法性，需要枚举类型提供MIN和MAX边界，有效区间[MIN, MAX)
  */
 template<typename Enum, typename IntType>
-typename std::enable_if<std::is_enum<Enum>::value && std::is_integral<IntType>::value, bool>::type
+typename std::enable_if<std::is_enum<Enum>::value &&
+	(std::is_integral<IntType>::value || std::is_enum<IntType>::value), bool>::type
 validateEnum(IntType rhs)
 {
 	using underlying = typename std::underlying_type<Enum>::type;

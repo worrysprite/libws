@@ -119,6 +119,7 @@ namespace ws
 			if (len && readAvailable() >= len)
 			{
 				val.assign((char*)readerPointer(), len);
+				_readPos += len;
 			}
 			return *this;
 		}

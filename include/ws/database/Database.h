@@ -71,6 +71,7 @@ namespace ws
 			DBStatement& operator>>(ByteArray& value);
 			void* getBlob(unsigned long& datasize);
 
+			//执行准备的语句，执行时必须保证绑定的参数生命周期有效性！
 			bool execute();
 			bool nextRow();
 			void reset();

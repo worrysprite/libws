@@ -17,7 +17,7 @@ namespace ws
 			{
 				va_list args;
 				va_start(args, format);
-				printOut("V", format, args);
+				printOut("[V]", format, args);
 				va_end(args);
 			}
 		}
@@ -28,7 +28,7 @@ namespace ws
 			{
 				va_list args;
 				va_start(args, format);
-				printOut("D", format, args);
+				printOut("[D]", format, args);
 				va_end(args);
 			}
 		}
@@ -39,7 +39,7 @@ namespace ws
 			{
 				va_list args;
 				va_start(args, format);
-				printOut("I", format, args);
+				printOut("[I]", format, args);
 				va_end(args);
 			}
 		}
@@ -50,7 +50,7 @@ namespace ws
 			{
 				va_list args;
 				va_start(args, format);
-				printOut("W", format, args);
+				printOut("[W]", format, args);
 				va_end(args);
 			}
 		}
@@ -61,7 +61,7 @@ namespace ws
 			{
 				va_list args;
 				va_start(args, format);
-				printOut("E", format, args);
+				printOut("[E]", format, args);
 				va_end(args);
 			}
 		}
@@ -71,9 +71,9 @@ namespace ws
 			std::string timeStr(String::formatTime());
 			char buffer[1024] = {0};
 #ifdef __APPLE__
-			sprintf(buffer, "\r[%s] %s %s\n", timeStr.c_str(), level, format);
+			sprintf(buffer, "\r[%s]%s %s\n", timeStr.c_str(), level, format);
 #else
-			sprintf(buffer, "\r[%s] %s %s\n", timeStr.c_str(), level, format);
+			sprintf(buffer, "\r[%s]%s %s\n", timeStr.c_str(), level, format);
 #endif
 			vprintf(buffer, valist);
 			fflush(stdout);
