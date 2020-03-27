@@ -274,10 +274,6 @@ void ServerSocket::cleanup()
 // main thread
 void ServerSocket::flushClient(ClientPtr client)
 {
-	if (!client || client->isClosing)
-	{
-		return;
-	}
 	std::lock_guard<std::mutex> writeLock(client->writerMtx);
 	client->writerBuffer.readPosition(0);
 	size_t remain = client->writerBuffer.size();
@@ -614,48 +610,33 @@ void ServerSocket::readIntoBuffer(Client& client)
 // main thread and socket thread
 void ServerSocket::writeFromBuffer(Client& client)
 {
-	if (client.isClosing)
-	{
-		return;
-	}
 	std::lock_guard<std::mutex> lock(client.writerMtx);
-	size_t remain = client.writerBuffer.size();
-	if (!remain)
+	auto& bytes = client.writerBuffer;
+	uint32_t available = bytes.readAvailable();
+	if (!available)
 	{
 		return;
 	}
-	char buffer[BUFFER_SIZE];
-	bzero(buffer, BUFFER_SIZE);
-	client.writerBuffer.position = 0;
-	while (remain > 0)
+	while (available)	//循环每次发1k直到发完或缓冲区满
 	{
-		size_t length = client.writerBuffer.readObject(buffer, BUFFER_SIZE);
-		long sentLength = send(client.socket, buffer, length, 0);
+		int length = available > BUFFER_SIZE ? BUFFER_SIZE : available;
+		int sentLength = send(client.socket, bytes.readerPointer(), length, 0);
 		if (sentLength == -1)
 		{
-			if (errno == EWOULDBLOCK || errno == EAGAIN)
+			if (errno != EWOULDBLOCK && errno != EAGAIN)
 			{
-				client.writerBuffer.position -= length;
-				break;
+				client.isClosing = true;	//some error
 			}
-			else
-			{
-				client.isClosing = true;
-				return;
-			}
-		}
-		if (sentLength < (long)length)	// tcp buffer full, stop write and wait epoll notify
-		{
-			client.writerBuffer.position -= length - sentLength;
 			break;
 		}
-		if (length >= remain)
+		bytes.seek(sentLength);
+		if (sentLength < length)
 		{
 			break;
 		}
-		remain = client.writerBuffer.available();
+		available = bytes.readAvailable();
 	}
-	client.writerBuffer.cutHead(client.writerBuffer.position);
+	bytes.cutHead(bytes.readPosition());
 }
 
 // main thread
@@ -883,12 +864,12 @@ void ServerSocket::flushClient(ClientPtr client)
     if (client->writerBuffer.size())
     {
         struct kevent evt;
-        EV_SET(&evt, client->socket, EVFILT_WRITE, EV_ENABLE, 0, 0, client);
+        EV_SET(&evt, client->socket, EVFILT_WRITE, EV_ENABLE, 0, 0, client.get());
     }
 }
 
 // socket thread
-void ServerSocket::writeFromBuffer(Client& client, uint32_t numBytes)
+void ServerSocket::writeFromBuffer(Client& client, uint32_t limitLength)
 {
     if (client.isClosing)
     {
@@ -896,22 +877,22 @@ void ServerSocket::writeFromBuffer(Client& client, uint32_t numBytes)
     }
     ByteArray& bytes = client.writerBuffer;
 	std::lock_guard<std::mutex> lock(client.writerMtx);
-    size_t size = bytes.size();
-    if (!size)
+    uint32_t available = bytes.readAvailable();
+    if (!available)
     {
         return;
     }
-    if (size > numBytes)
+    if (available > limitLength)
     {
-        size = numBytes;
+		available = limitLength;
     }
-    ssize_t length = send(client.socket, bytes.getBytes(), size, 0);
-    if (length < 0 || length != numBytes)
+    ssize_t length = send(client.socket, bytes.readerPointer(), available, 0);
+    if (length < 0 || length != limitLength)
     {
         Log::e("send data error!");
     }
-    bytes.cutHead(numBytes);
-    if (!bytes.size())
+    bytes.cutHead(available);
+    if (!bytes.readAvailable())
     {
         struct kevent evt;
         EV_SET(&evt, client.socket, EVFILT_WRITE, EV_DISABLE, 0, 0, client);

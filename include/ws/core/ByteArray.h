@@ -74,7 +74,7 @@ namespace ws
 			void truncate(size_t resetSize = 0);
 
 			//剪切头部length字节的数据，拷贝到out
-			void cutHead(size_t length = 0, char* out = nullptr);
+			void cutHead(size_t length, char* out = nullptr);
 			void cutHead(size_t length, ByteArray& out);
 
 			//剪切尾部length字节的数据，拷贝到out
@@ -150,8 +150,7 @@ namespace ws
 			}
 			/************************************************************************/
 			/* 将数据读到另一个ByteArray中                                           */
-			/* outBytes	要读入的目标ByteArray                                        */
-			/* offset	从outBytes的offset位置开始写入                               */
+			/* outBytes	要读入的目标ByteArray，从outBytes末尾写入                     */
 			/* length	要读取的内容大小                                             */
 			/************************************************************************/
 			size_t readBytes(ByteArray& outBytes, size_t length = 0) const;

@@ -221,7 +221,7 @@ namespace ws
 
 		void ByteArray::cutHead(size_t length, char* out /*= nullptr*/)
 		{
-			if (!_writePos)
+			if (!_writePos || !length)
 				return;
 
 			if (length >= _writePos)
@@ -253,7 +253,7 @@ namespace ws
 
 		void ByteArray::cutHead(size_t length, ByteArray& out)
 		{
-			if (!_writePos)
+			if (!_writePos || !length)
 				return;
 
 			if (length >= _writePos)
