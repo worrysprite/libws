@@ -617,7 +617,7 @@ void ServerSocket::writeFromBuffer(Client& client)
 	{
 		return;
 	}
-	while (available)	//Ñ­»·Ã¿´Î·¢1kÖ±µ½·¢Íê»ò»º³åÇøÂú
+	while (available)	//å¾ªçŽ¯æ¯æ¬¡å‘1kç›´åˆ°å‘å®Œæˆ–ç¼“å†²åŒºæ»¡
 	{
 		int length = available > BUFFER_SIZE ? BUFFER_SIZE : available;
 		int sentLength = send(client.socket, bytes.readerPointer(), length, 0);

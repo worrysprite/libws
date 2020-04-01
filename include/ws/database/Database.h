@@ -101,7 +101,7 @@ namespace ws
 		class Recordset
 		{
 		public:
-			Recordset(MYSQL_RES* pMysqlRes);
+			Recordset(MYSQL_RES* pMysqlRes, const std::string& sql);
 			virtual ~Recordset();
 
 			bool nextRow();
@@ -120,11 +120,12 @@ namespace ws
 			void*				getBlob(unsigned long& datasize);
 			void				skipFields(int num);
 
-		protected:
-			unsigned int		fieldIndex;
-			unsigned int		numFields;
+		private:
+			uint32_t			fieldIndex;
+			uint32_t			numFields;
 			MYSQL_ROW			mysqlRow;
 			MYSQL_RES*			mysqlRes;
+			std::string			sql;
 
 			template<typename T>
 			Recordset&			getInt(T& value);

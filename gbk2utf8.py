@@ -61,5 +61,7 @@ def convert_dir_ext(path, ext):
 convert_dir_ext("include", "h")
 convert_dir_ext("wsCore", "cpp")
 convert_dir_ext("wsDatabase", "cpp")
-convert_dir_ext("wsNetwork", "h")
+convert_dir_ext("wsNetwork", "cpp")
 convert_dir_ext("test", "cpp")
+
+os.system('pause')

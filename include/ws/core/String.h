@@ -23,6 +23,8 @@ namespace ws
 			/* 拼接数组里的所有字符串，用glue参数拼接                                 */
 			/************************************************************************/
 			static void join(const std::vector<std::string>& input, std::string& output, const char* glue = "");
+			//复制std::string字符串内容到dest，返回是否完整复制
+			static bool copy(char* dest, uint32_t size, const std::string& src);
 
 			static void toLowercase(char* str);
 			static void toUppercase(char* str);

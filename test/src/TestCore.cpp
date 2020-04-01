@@ -4,6 +4,7 @@
 #include "ws/core/ByteArray.h"
 #include "ws/core/Utils.h"
 #include "ws/core/Math.h"
+#include "ws/core/Log.h"
 #include "ws/core/AStar.h"
 
 using namespace ws::core;
@@ -120,16 +121,32 @@ bool testMath()
 	std::cout << "angle between Vector2D(3, 4) and Vector2D(-4, 3) =" << Vector2D<double>::angleBetween(v1, v2) << std::endl;
 
 
-	
+
 
 	std::cout << std::endl;
 	return true;
 }
 
+bool testLog()
+{
+	std::cout << "====================Test Log====================" << std::endl;
+	Log::level = LogLevel::_DEBUG_;
+
+	Log::v("verbost log...");
+	Log::d("debug log with fmt string: %s", "variable");
+	Log::e("error1 log..");
+
+	Log::level = LogLevel::_WARN_;
+
+	Log::d("do not print debug log");
+	Log::e("error2 log..");
+	return true;
+}
+
 bool testAStar()
 {
-	constexpr int WIDTH = 75;
-	constexpr int HEIGHT = 100;
+	constexpr uint32_t WIDTH = 75;
+	constexpr uint32_t HEIGHT = 100;
 
 	bool blockData[HEIGHT][WIDTH] = {
 #include "testmap"
@@ -138,24 +155,24 @@ bool testAStar()
 	class GameMap : public AbstractMap
 	{
 	public:
-		GameMap(bool* blocks, int w, int h) : map(blocks), width(w), height(h) {}
+		GameMap(bool* blocks, uint32_t w, uint32_t h) : map(blocks), width(w), height(h) {}
 
 		//地图宽
-		virtual int getWidth() const override { return width; }
+		virtual uint32_t getWidth() const override { return width; }
 		//地图高
-		virtual int getHeight() const override { return height; }
+		virtual uint32_t getHeight() const override { return height; }
 		//点x,y是否阻挡
-		virtual bool isBlock(int x, int y) const override
+		virtual bool isBlock(uint32_t x, uint32_t y) const override
 		{
-			if (x < 0 || x >= width || y < 0 || y >= height)
-				return false;	//out of range
+			if (x >= width || y >= height)
+				return true;	//out of range
 
 			return map[y * width + x];
 		}
 
 	private:
-		int width;
-		int height;
+		uint32_t width;
+		uint32_t height;
 		bool* map;
 	};
 

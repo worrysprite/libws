@@ -5,6 +5,7 @@ extern bool testSignal();
 extern bool testEvent();
 extern bool testByteArray();
 extern bool testMath();
+extern bool testLog();
 extern bool testAStar();
 extern bool testEnum();
 extern bool testDatabase();
@@ -15,7 +16,8 @@ int main()
 	assert(testEvent());
 	assert(testByteArray());
 	assert(testMath());
-	assert(testAStar());
+	assert(testLog());
+	//assert(testAStar());
 	assert(testEnum());
 	assert(testDatabase());
 

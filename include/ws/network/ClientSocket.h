@@ -26,9 +26,9 @@ namespace ws
 
 			virtual void update();
 
-			inline bool isConnected(){ return status == SocketStatus::CONNECTED; }
-			inline const std::string& remoteIP(){ return _remoteIP; }
-			inline uint16_t remotePort() { return _remotePort; }
+			inline bool isConnected() const { return status == SocketStatus::CONNECTED; }
+			inline const std::string& remoteIP() const { return _remoteIP; }
+			inline uint16_t remotePort() const { return _remotePort; }
 
 			//发送数据，会复制数据到缓冲区，不必保持数据生命周期
 			void send(const ByteArray& packet);

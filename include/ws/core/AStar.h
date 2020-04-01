@@ -15,11 +15,11 @@ namespace ws
 		{
 		public:
 			//地图宽
-			virtual int getWidth() const = 0;
+			virtual uint32_t getWidth() const = 0;
 			//地图高
-			virtual int getHeight() const = 0;
+			virtual uint32_t getHeight() const = 0;
 			//点x,y是否阻挡
-			virtual bool isBlock(int x, int y) const = 0;
+			virtual bool isBlock(uint32_t x, uint32_t y) const = 0;
 		};
 
 		class PathNode

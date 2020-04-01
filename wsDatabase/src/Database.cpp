@@ -8,7 +8,8 @@
 using namespace ws::database;
 
 //===================== Recordset Implements ========================
-Recordset::Recordset(MYSQL_RES* pMysqlRes) : fieldIndex(0), mysqlRes(pMysqlRes)
+Recordset::Recordset(MYSQL_RES* pMysqlRes, const std::string& sql) :
+	fieldIndex(0), mysqlRes(pMysqlRes), sql(sql)
 {
 	numFields = mysql_num_fields(mysqlRes);
 	mysqlRow = NULL;
@@ -69,7 +70,7 @@ Recordset& Recordset::operator>>(int64_t& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!");
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
 	return *this;
 }
@@ -86,7 +87,7 @@ Recordset& Recordset::operator >> (uint64_t& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!");
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
 	return *this;
 }
@@ -103,7 +104,7 @@ Recordset& Recordset::operator >> (std::string& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!");
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
 	return *this;
 }
@@ -120,7 +121,7 @@ Recordset& Recordset::operator>>(float& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!");
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
 	return *this;
 }
@@ -137,7 +138,7 @@ Recordset& Recordset::operator>>(double& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!");
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
 	return *this;
 }
@@ -159,7 +160,7 @@ Recordset& Recordset::operator>>(ByteArray& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!");
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
 	return *this;
 }
@@ -177,7 +178,7 @@ Recordset& Recordset::getInt(T& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!");
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
 	return *this;
 }
@@ -201,7 +202,7 @@ void* Recordset::getBlob(unsigned long& datasize)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!");
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
 	return nullptr;
 }
@@ -749,7 +750,7 @@ RecordsetPtr Database::query(const char* strSQL, int nCommit /*= 1*/)
 			numResultRows = mysql_num_rows(pMysqlRes);
 			if (numResultRows > 0)
 			{
-				record = std::make_unique<Recordset>(pMysqlRes);
+				record = std::make_unique<Recordset>(pMysqlRes, strSQL);
 			}
 			else
 			{

@@ -77,6 +77,26 @@ namespace ws
 			}
 		}
 
+		bool String::copy(char* dest, uint32_t size, const std::string& src)
+		{
+			uint32_t srcLen = (uint32_t)src.length();
+			if (!srcLen)
+				return true;
+
+			if (size > srcLen)	//dest size enough
+			{
+				memcpy(dest, src.c_str(), srcLen);
+				dest[srcLen] = '\0';
+				return true;
+			}
+			else
+			{
+				memcpy(dest, src.c_str(), size - 1);
+				dest[size - 1] = '\0';
+				return false;
+			}
+		}
+
 		void String::toLowercase(char* str)
 		{
 			while (*str != '\0')
