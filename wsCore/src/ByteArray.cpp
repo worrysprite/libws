@@ -13,20 +13,25 @@ namespace ws
 				length = BYTES_DEFAULT_SIZE;
 			}
 			_data = malloc(length);
-			if (_data)
-			{
-				memset(_data, 0, length);
-			}
+			if (!_data)
+				throw std::bad_alloc();
+			memset(_data, 0, length);
 		}
 
-		ByteArray::ByteArray(const ByteArray& ba) :_capacity(ba._capacity),
-			_readPos(ba._readPos), _writePos(ba._writePos), _readOnly(false),
-			isAttached(false)
+		ByteArray::ByteArray(const ByteArray& other) :_capacity(other._capacity),
+			_readPos(other._readPos), _writePos(other._writePos),
+			_readOnly(other._readOnly), isAttached(other.isAttached)
 		{
-			_data = malloc(_capacity);
-			if (_data)
+			if (isAttached)
 			{
-				memcpy(_data, ba._data, _capacity);
+				_data = other._data;
+			}
+			else
+			{
+				_data = malloc(_capacity);
+				if (!_data)
+					throw std::bad_alloc();
+				memcpy(_data, other._data, _capacity);
 			}
 		}
 
@@ -37,10 +42,9 @@ namespace ws
 			if (copy)
 			{
 				_data = malloc(length);
-				if (_data)
-				{
-					memcpy(_data, bytes, length);
-				}
+				if (!_data)
+					throw std::bad_alloc();
+				memcpy(_data, bytes, length);
 			}
 			else
 			{
@@ -48,17 +52,13 @@ namespace ws
 			}
 		}
 
-		ByteArray::ByteArray(ByteArray&& rvalue) noexcept
+		ByteArray::ByteArray(ByteArray&& rvalue) noexcept :
+			_data(rvalue._data), _capacity(rvalue._capacity),
+			_readPos(rvalue._readPos), _writePos(rvalue._writePos),
+			isAttached(rvalue.isAttached), _readOnly(rvalue._readOnly)
 		{
-			_data = rvalue._data;
-			_capacity = rvalue._capacity;
-			_readPos = rvalue._readPos;
-			_writePos = rvalue._writePos;
-			isAttached = rvalue.isAttached;
-			_readOnly = rvalue._readOnly;
-
-			rvalue._data = malloc(BYTES_DEFAULT_SIZE);
-			rvalue._capacity = BYTES_DEFAULT_SIZE;
+			rvalue._data = nullptr;
+			rvalue._capacity = 0;
 			rvalue._readPos = rvalue._writePos = 0;
 			rvalue._readOnly = false;
 			rvalue.isAttached = false;
@@ -72,7 +72,7 @@ namespace ws
 			}
 			if (length > 0)
 			{
-				outBytes.expand(length, outBytes._writePos);
+				outBytes.expand(outBytes.size() + length);
 				memcpy(outBytes.writerPointer(), readerPointer(), length);
 				outBytes._writePos += length;
 				_readPos += length;
@@ -124,34 +124,21 @@ namespace ws
 			return *this;
 		}
 
-		void ByteArray::expand(size_t size, size_t pos)
+		void ByteArray::expand(size_t size)
 		{
-			size_t newCap(_capacity);
-			while (pos + size > newCap)
+			size_t newCap = _capacity;
+			while (size > newCap)
 			{
-				newCap = _capacity * 2;
+				newCap *= 2;
 			}
 			if (newCap != _capacity)
 			{
 				void* newblock = realloc(_data, newCap);
-				if (newblock)
-				{
-					_data = newblock;
-					_capacity = newCap;
-				}
-			}
-		}
+				if (!newblock)
+					throw std::bad_alloc();
 
-		void ByteArray::resize(size_t size)
-		{
-			if (size > _capacity)
-			{
-				expand(size - _capacity, _writePos);
-			}
-			_writePos = size;
-			if (_readPos > size)
-			{
-				_readPos = size;
+				_data = newblock;
+				_capacity = newCap;
 			}
 		}
 
@@ -166,7 +153,7 @@ namespace ws
 			}
 			if (length > 0)
 			{
-				expand(length, _writePos);
+				expand(_writePos + length);
 				void* pSrc = (void*)((intptr_t)inBytes._data + offset);
 				memcpy(writerPointer(), pSrc, length);
 				_writePos += length;
@@ -178,7 +165,7 @@ namespace ws
 			if (readOnly() || !inData || !length)
 				return;
 
-			expand(length, _writePos);
+			expand(_writePos + length);
 			memcpy(writerPointer(), inData, length);
 			_writePos += length;
 		}
@@ -188,7 +175,7 @@ namespace ws
 			if (readOnly() || !length)
 				return;
 
-			expand(length, _writePos);
+			expand(_writePos + length);
 			memset(writerPointer(), 0, length);
 			_writePos += length;
 		}
@@ -209,12 +196,11 @@ namespace ws
 				{
 					free(_data);
 					_data = malloc(resetSize);
+					if (!_data)
+						throw std::bad_alloc();
 				}
 			}
-			if (_data)
-			{
-				memset(_data, 0, _capacity);
-			}
+			memset(_data, 0, _capacity);
 			_readPos = 0;
 			_writePos = 0;
 		}
@@ -353,10 +339,9 @@ namespace ws
 			if (copy)
 			{
 				_data = malloc(length);
-				if (_data)
-				{
-					memcpy(_data, bytes, length);
-				}
+				if (!_data)
+					throw std::bad_alloc();
+				memcpy(_data, bytes, length);
 				isAttached = false;
 			}
 			else
@@ -369,9 +354,15 @@ namespace ws
 			_writePos = length;
 		}
 
-		void ByteArray::swap(ByteArray& other)
+		void ByteArray::swap(ByteArray& other) noexcept
 		{
-			auto tmp = _data;
+			std::swap(_data, other._data);
+			std::swap(isAttached, other.isAttached);
+			std::swap(_readOnly, other._readOnly);
+			std::swap(_readPos, other._readPos);
+			std::swap(_writePos, other._writePos);
+			std::swap(_capacity, other._capacity);
+			/*auto tmp = _data;
 			_data = other._data;
 			other._data = tmp;
 
@@ -393,7 +384,7 @@ namespace ws
 
 			tmp2 = _readOnly;
 			_readOnly = other._readOnly;
-			other._readOnly = tmp2;
+			other._readOnly = tmp2;*/
 		}
 	}
 }

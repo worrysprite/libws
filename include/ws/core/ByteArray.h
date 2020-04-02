@@ -14,9 +14,13 @@ namespace ws
 		class ByteArray
 		{
 		public:
+			//构造一个字节数组
 			ByteArray(size_t length = BYTES_DEFAULT_SIZE);
-			ByteArray(const ByteArray& ba);
+			//复制构造
+			ByteArray(const ByteArray& other);
+			//用一块内存构造，复制或只读
 			ByteArray(const void* bytes, size_t length, bool copy = false);
+			//移动构造
 			ByteArray(ByteArray&& rvalue) noexcept;
 
 			virtual ~ByteArray()
@@ -97,7 +101,7 @@ namespace ws
 			void attach(void* bytes, size_t length, bool copy = false);
 
 			//与另一个ByteArray交换数据
-			void swap(ByteArray& other);
+			void swap(ByteArray& other) noexcept;
 
 			char readByte() const
 			{
@@ -212,10 +216,8 @@ namespace ws
 			template<class T>
 			const ByteArray& operator>>(T& val) const { return readType(val); }
 
-			//从pos扩容到可写入size大小，不影响内容
-			void expand(size_t size, size_t pos);
-			//重新设置大小，不影响内容
-			void resize(size_t size);
+			//将capacity扩容到大于size尺寸，不影响内容（可能重新分配内存！）
+			void expand(size_t size);
 
 			void writeByte(const char& b)
 			{
@@ -276,7 +278,7 @@ namespace ws
 					return *this;
 
 				constexpr auto typeSize = sizeof(T);
-				expand(typeSize, _writePos);
+				expand(_writePos + typeSize);
 				memcpy((void*)(writerPointer()), &val, typeSize);
 				_writePos += typeSize;
 				return *this;

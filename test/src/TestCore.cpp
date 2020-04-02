@@ -87,18 +87,45 @@ bool testByteArray()
 {
 	std::cout << "====================Test ByteArray====================" << std::endl;
 	TestStruct ts1, ts2;
-	ts1.i8 = -0x70;
-	ts1.u8 = 0xf0;
-	ts1.i16 = -0x7ff0;
-	ts1.u16 = 0xfff0;
-	ts1.i32 = -0x7ffffff0;
-	ts1.u32 = 0xfffffff0;
+	ts1.i8 = -110;
+	ts1.u8 = 155;
+	ts1.i16 = -31234;
+	ts1.u16 = 41234;
+	ts1.i32 = -2123456789;
+	ts1.u32 = 3123456789;
 	ts1.i64 = -0x7ffffffffffffff0ll;
 	ts1.u64 = 0xfffffffffffffff0ull;
 
 	ByteArray bytes;
 	bytes << ts1.i8 << ts1.u8 << ts1.i16 << ts1.u16 << ts1.i32 << ts1.u32 << ts1.i64 << ts1.u64;
 	std::cout << "sizeof bytes: " << bytes.size() << std::endl;
+
+	bytes >> ts2;
+	std::cout << "unpack data: " << std::endl <<
+		(int)ts2.i8 << std::endl <<
+		(int)ts2.u8 << std::endl <<
+		ts2.i16 << std::endl <<
+		ts2.u16 << std::endl <<
+		ts2.i32 << std::endl << 
+		ts2.u32 << std::endl << 
+		ts2.i64 << std::endl << 
+		ts2.u64 << std::endl;
+
+	ByteArray b2;
+	b2.swap(bytes);
+
+	std::cout << "sizeof bytes: " << bytes.size() << "sizeof byte2: " << b2.size() << std::endl;
+	b2.readPosition(0);
+	b2 >> ts2;
+	std::cout << "unpack data: " << std::endl <<
+		(int)ts2.i8 << std::endl <<
+		(int)ts2.u8 << std::endl <<
+		ts2.i16 << std::endl <<
+		ts2.u16 << std::endl <<
+		ts2.i32 << std::endl <<
+		ts2.u32 << std::endl <<
+		ts2.i64 << std::endl <<
+		ts2.u64 << std::endl;
 	std::cout << std::endl;
 	return true;
 }
