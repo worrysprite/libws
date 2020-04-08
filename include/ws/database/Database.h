@@ -1,7 +1,7 @@
 #ifndef __WS_DATABASE_H__
 #define __WS_DATABASE_H__
 
-#include <mysql/mysql.h>
+#include <mysql.h>
 #include <string>
 #include <list>
 #include <unordered_map>

@@ -1,5 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(wsDatabase)
 
+INCLUDE_DIRECTORIES("/usr/include/mysql")
+
 AUX_SOURCE_DIRECTORY(${PROJECT_SOURCE_DIR}/src wsdatabase_src)
 ADD_LIBRARY(${PROJECT_NAME} STATIC ${wsdatabase_src})
