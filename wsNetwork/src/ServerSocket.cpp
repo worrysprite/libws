@@ -409,7 +409,7 @@ void ServerSocket::writeClientBuffer(Client& client, char* data, size_t size)
 #elif defined(__linux__)
 // main thread
 ServerSocket::ServerSocket() :
-isExit(false), epfd(0), nextClientID(0), listenSocket(0)
+isExit(false), epfd(0), listenSocket(0)
 {
 	
 }
@@ -593,7 +593,7 @@ void ServerSocket::readIntoBuffer(Client& client)
 	}
 	while (length > 0)
 	{
-		writeClientBuffer(*client, buffer, length);
+		writeClientBuffer(client, buffer, length);
 		if (length < BUFFER_SIZE)
 		{
 			break;
@@ -643,13 +643,13 @@ void ServerSocket::writeFromBuffer(Client& client)
 void ServerSocket::destroyClient(ClientPtr client)
 {
 	shutdown(client->socket, SHUT_RDWR);
-	if (-1 == close(client->socket))
+	close(client->socket);
+	if (config.onClientDestroyed)
 	{
-		Log::e("close socket error: %s", strerror(errno));
+		config.onClientDestroyed(client);
 	}
 	client->onDisconnected();
 	client->server = nullptr;
-	config.destroyClient(client);
 }
 
 // socket thread
@@ -921,13 +921,13 @@ bool ServerSocket::setNonBlock(int sockfd)
 void ServerSocket::destroyClient(ClientPtr client)
 {
     shutdown(client->socket, SHUT_RDWR);
-    if (-1 == close(client->socket))
-    {
-        Log::e("close socket error: %s", strerror(errno));
-    }
+	close(client->socket);
+	if (config.onClientDestroyed)
+	{
+		config.onClientDestroyed(client);
+	}
     client->onDisconnected();
     client->server = nullptr;
-    config.destroyClient(client);
 }
 
 #endif
@@ -1045,12 +1045,4 @@ uint16_t ServerSocket::getNextClientID()
 	}
 	while (allClients.find(nextID) != allClients.end());
 	return nextID;
-}
-
-ws::network::ServerSocket::OverlappedData::~OverlappedData()
-{
-	if (acceptSocket)
-	{
-		closesocket(acceptSocket);
-	}
 }

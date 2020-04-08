@@ -125,7 +125,7 @@ namespace ws
 
 			struct OverlappedData
 			{
-				~OverlappedData();
+				~OverlappedData() { if (acceptSocket) closesocket(acceptSocket); }
 				OVERLAPPED overlapped;
 				WSABUF wsabuff;
 				char buffer[BUFFER_SIZE];
