@@ -846,9 +846,9 @@ void ServerSocket::readIntoBuffer(Client& client, uint32_t numBytes)
     ByteArray& bytes = client.readerBuffer;
 	client.readerMtx.lock();
     size_t oldSize = bytes.size();
-    bytes.expand(numBytes, oldSize);
-    ssize_t length = recv(client.socket, bytes.getReaderPointer(), numBytes, 0);
-	bytes.setContentSize(oldSize + numBytes);
+    bytes.expand(oldSize + numBytes);
+    ssize_t length = recv(client.socket, bytes.readerPointer(), numBytes, 0);
+	bytes.writePosition(oldSize + length);
 	client.readerMtx.unlock();
     if (length != numBytes)
     {
