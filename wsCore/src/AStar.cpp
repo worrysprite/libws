@@ -1,6 +1,7 @@
 #include "ws/core/AStar.h"
 #include "ws/core/Log.h"
 #include <memory>
+#include <cstring>
 #ifdef _DEBUG_ASTAR
 #include <iostream>
 #include <thread>
