@@ -31,7 +31,10 @@ bool ClientSocket::initWinsock()
 ClientSocket::~ClientSocket()
 {
 	isExit = true;
-	workerThread->join();
+	if (workerThread)
+	{
+		workerThread->join();
+	}
 #ifdef _WIN32
 	WSACleanup();
 #endif // _WIN32
