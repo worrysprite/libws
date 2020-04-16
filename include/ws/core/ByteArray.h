@@ -92,6 +92,10 @@ namespace ws
 			inline void* data() { return _data; }
 			inline const void* data() const { return _data; }
 
+			//获取管理的内存块 + 偏移量
+			inline void* data(int offset) { return (uint8_t*)_data + offset; }
+			inline const void* data(int offset) const { return (uint8_t*)_data + offset; }
+
 			//获取当前读位置的指针
 			inline const void* readerPointer() const { return (void*)((intptr_t)_data + _readPos); }
 			//获取当前写位置的指针
@@ -103,55 +107,17 @@ namespace ws
 			//与另一个ByteArray交换数据
 			void swap(ByteArray& other) noexcept;
 
-			char readByte() const
-			{
-				return readNumber<char>();
-			}
+			int8_t readInt8() const { return readNumber<int8_t>(); }
+			uint8_t readUInt8() const { return readNumber<uint8_t>(); }
+			int16_t readInt16() const { return readNumber<int16_t>(); }
+			uint16_t readUInt16() const { return readNumber<uint16_t>(); }
+			int32_t readInt32() const { return readNumber<int32_t>(); }
+			uint32_t readUInt32() const { return readNumber<uint32_t>(); }
+			int64_t readInt64() const { return readNumber<int64_t>(); }
+			uint64_t readUInt64() const { return readNumber<uint64_t>(); }
+			float readFloat() const { return readNumber<float>(); }
+			double readDouble() const { return readNumber<double>(); }
 
-			unsigned char readUnsignedByte() const
-			{
-				return readNumber<unsigned char>();
-			}
-
-			short readShort() const
-			{
-				return readNumber<short>();
-			}
-
-			unsigned short readUnsignedShort() const
-			{
-				return readNumber<unsigned short>();
-			}
-
-			int readInt() const
-			{
-				return readNumber<int>();
-			}
-
-			unsigned int readUnsignedInt() const
-			{
-				return readNumber<unsigned int>();
-			}
-
-			long long readInt64() const
-			{
-				return readNumber<long long>();
-			}
-
-			unsigned long long readUnsignedInt64() const
-			{
-				return readNumber<unsigned long long>();
-			}
-
-			float readFloat() const
-			{
-				return readNumber<float>();
-			}
-
-			double readDouble() const
-			{
-				return readNumber<double>();
-			}
 			/************************************************************************/
 			/* 将数据读到另一个ByteArray中                                           */
 			/* outBytes	要读入的目标ByteArray，从outBytes末尾写入                     */
@@ -172,7 +138,7 @@ namespace ws
 			//先读取一个uint16_t作为字符串长度，再读取该长度的字符串
 			std::string readString() const
 			{
-				return readString(readUnsignedShort());
+				return readString(readUInt16());
 			}
 
 			template <class T>
@@ -186,8 +152,10 @@ namespace ws
 				}
 				return *this;
 			}
+
 			template <typename T>
-			T readNumber() const
+			typename std::enable_if<std::is_arithmetic<T>::value, T>::type
+			readNumber() const
 			{
 				constexpr size_t typeSize = sizeof(T);
 				if (typeSize <= readAvailable())
@@ -198,17 +166,15 @@ namespace ws
 				}
 				return 0;
 			}
-			const ByteArray& operator>>(char& val) const { return readType(val); }
-			const ByteArray& operator>>(signed char& val) const { return readType(val); }
-			const ByteArray& operator>>(unsigned char& val) const { return readType(val); }
-			const ByteArray& operator>>(short& val) const { return readType(val); }
-			const ByteArray& operator>>(unsigned short& val) const { return readType(val); }
-			const ByteArray& operator>>(int& val) const { return readType(val); }
-			const ByteArray& operator>>(unsigned int& val) const { return readType(val); }
-			const ByteArray& operator>>(long& val) const { return readType(val); }
-			const ByteArray& operator>>(unsigned long& val) const { return readType(val); }
-			const ByteArray& operator>>(long long& val) const { return readType(val); }
-			const ByteArray& operator>>(unsigned long long& val) const { return readType(val); }
+
+			const ByteArray& operator>>(int8_t& val) const { return readType(val); }
+			const ByteArray& operator>>(uint8_t& val) const { return readType(val); }
+			const ByteArray& operator>>(int16_t& val) const { return readType(val); }
+			const ByteArray& operator>>(uint16_t& val) const { return readType(val); }
+			const ByteArray& operator>>(int32_t& val) const { return readType(val); }
+			const ByteArray& operator>>(uint32_t& val) const { return readType(val); }
+			const ByteArray& operator>>(int64_t& val) const { return readType(val); }
+			const ByteArray& operator>>(uint64_t& val) const { return readType(val); }
 			const ByteArray& operator>>(float& val) const { return readType(val); }
 			const ByteArray& operator>>(double& val) const { return readType(val); }
 			//以2字节长度做前缀读取字符串
@@ -219,55 +185,13 @@ namespace ws
 			//将capacity扩容到大于size尺寸，不影响内容（可能重新分配内存！）
 			void expand(size_t size);
 
-			void writeByte(const char& b)
-			{
-				writeType(b);
-			}
-			void writeUnsignedByte(const unsigned char& ub)
-			{
-				writeType(ub);
-			}
-			void writeShort(const short& s)
-			{
-				writeType(s);
-			}
-			void writeUnsignedShort(const unsigned short& us)
-			{
-				writeType(us);
-			}
-			void writeInt(const int& i)
-			{
-				writeType(i);
-			}
-			void writeUnsignedInt(const unsigned int& ui)
-			{
-				writeType(ui);
-			}
-			void writeInt64(const long long& ll)
-			{
-				writeType(ll);
-			}
-			void writeUnsignedInt64(const unsigned long long& ull)
-			{
-				writeType(ull);
-			}
-			void writeFloat(const float& f)
-			{
-				writeType(f);
-			}
-			void writeDouble(const double& d)
-			{
-				writeType(d);
-			}
-			/************************************************************************/
-			/* 从另一个ByteArray写入数据                                             */
-			/* inBytes	数据源                                                      */
-			/* offset	从inBytes的offset位置开始读取                                */
-			/* length	要写入的字节数                                               */
-			/************************************************************************/
-			void writeBytes(const ByteArray& inBytes, size_t offset = 0, size_t length = 0);
-			//写入指定数据
+			//写入一段原始buffer
 			void writeData(const void* inData, size_t length);
+			//把另一个ByteArray的数据拷过来（从writePosition开始写入）
+			void writeBytes(const ByteArray& other)
+			{
+				writeData(other.data(), other.size());
+			}
 			//写入length长度的空数据(\0)
 			void writeEmptyData(size_t length);
 
@@ -275,7 +199,7 @@ namespace ws
 			ByteArray& writeType(const T& val)
 			{
 				if (readOnly())
-					return *this;
+					throw std::exception("read only memory blocks!!");
 
 				constexpr auto typeSize = sizeof(T);
 				expand(_writePos + typeSize);
@@ -285,23 +209,32 @@ namespace ws
 			}
 
 			//输入操作符
-			ByteArray& operator<<(const char& val) { return writeType(val); }
-			ByteArray& operator<<(const signed char& val) { return writeType(val); }
-			ByteArray& operator<<(const unsigned char& val) { return writeType(val); }
-			ByteArray& operator<<(const short& val) { return writeType(val); }
-			ByteArray& operator<<(const unsigned short& val) { return writeType(val); }
-			ByteArray& operator<<(const int& val) { return writeType(val); }
-			ByteArray& operator<<(const unsigned int& val) { return writeType(val); }
-			ByteArray& operator<<(const long& val) { return writeType(val); }
-			ByteArray& operator<<(const unsigned long& val) { return writeType(val); }
-			ByteArray& operator<<(const long long& val) { return writeType(val); }
-			ByteArray& operator<<(const unsigned long long& val) { return writeType(val); }
+			ByteArray& operator<<(const int8_t& val) { return writeType(val); }
+			ByteArray& operator<<(const uint8_t& val) { return writeType(val); }
+			ByteArray& operator<<(const int16_t& val) { return writeType(val); }
+			ByteArray& operator<<(const uint16_t& val) { return writeType(val); }
+			ByteArray& operator<<(const int32_t& val) { return writeType(val); }
+			ByteArray& operator<<(const uint32_t& val) { return writeType(val); }
+			ByteArray& operator<<(const int64_t& val) { return writeType(val); }
+			ByteArray& operator<<(const uint64_t& val) { return writeType(val); }
 			ByteArray& operator<<(const float& val) { return writeType(val); }
 			ByteArray& operator<<(const double& val) { return writeType(val); }
 			//以2字节长度做前缀写入字符串
 			ByteArray& operator<<(const std::string& val);
+
 			template<class T>
-			ByteArray& operator<<(const T& val) { return writeType(val); }
+			ByteArray& operator<<(const T& val)
+			{
+				if (readOnly())
+					throw std::exception("read only memory blocks!!");
+
+				constexpr auto typeSize = sizeof(T);
+				expand(_writePos + typeSize);
+				memcpy((void*)(writerPointer()), &val, typeSize);
+				_writePos += typeSize;
+
+				return *this;
+			}
 
 		private:
 			bool				isAttached;

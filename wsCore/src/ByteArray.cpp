@@ -115,7 +115,7 @@ namespace ws
 
 		const ByteArray& ByteArray::operator>>(std::string& val) const
 		{
-			uint16_t len = readUnsignedShort();
+			uint16_t len = readUInt16();
 			if (len && readAvailable() >= len)
 			{
 				val.assign((char*)readerPointer(), len);
@@ -142,24 +142,6 @@ namespace ws
 			}
 		}
 
-		void ByteArray::writeBytes(const ByteArray& inBytes, size_t offset /*= 0*/, size_t length /*= 0*/)
-		{
-			if (readOnly() || offset >= inBytes._writePos)
-				return;
-
-			if (length == 0 || offset + length > inBytes._writePos)
-			{
-				length = inBytes._writePos - offset;
-			}
-			if (length > 0)
-			{
-				expand(_writePos + length);
-				void* pSrc = (void*)((intptr_t)inBytes._data + offset);
-				memcpy(writerPointer(), pSrc, length);
-				_writePos += length;
-			}
-		}
-
 		void ByteArray::writeData(const void* inData, size_t length)
 		{
 			if (readOnly() || !inData || !length)
@@ -183,7 +165,7 @@ namespace ws
 		ByteArray& ByteArray::operator<<(const std::string& val)
 		{
 			uint16_t len = (uint16_t)val.size();
-			writeUnsignedShort(len);
+			*this << len;
 			writeData(val.c_str(), len);
 			return *this;
 		}
@@ -210,7 +192,7 @@ namespace ws
 			if (!_writePos || !length)
 				return;
 
-			if (length >= _writePos)
+			if (length >= _writePos)	//clear
 			{
 				if (out)
 				{
@@ -225,7 +207,7 @@ namespace ws
 					memcpy(out, _data, length);
 				}
 				_writePos -= length;
-				memmove(_data, (void*)((intptr_t)_data + length), _writePos);
+				memmove(_data, data(length), _writePos);
 				if (_readPos > length)
 				{
 					_readPos -= length;
@@ -244,14 +226,14 @@ namespace ws
 
 			if (length >= _writePos)
 			{
-				out.writeBytes(*this, 0, _writePos);
+				out.writeData(_data, _writePos);
 				truncate();
 			}
 			else
 			{
-				out.writeBytes(*this, 0, length);
+				out.writeData(_data, length);
 				_writePos -= length;
-				memmove(_data, (void*)((intptr_t)_data + length), _writePos);
+				memmove(_data, data(length), _writePos);
 				if (_readPos > length)
 				{
 					_readPos -= length;
@@ -268,7 +250,7 @@ namespace ws
 			if (!_writePos)
 				return;
 
-			if (length >= _writePos)
+			if (length >= _writePos)	//clear
 			{
 				if (out)
 				{
@@ -281,7 +263,7 @@ namespace ws
 				_writePos -= length;
 				if (out)
 				{
-					memcpy(out, (void*)((intptr_t)_data + _writePos), length);
+					memcpy(out, data(_writePos), length);
 				}
 				if (_readPos > _writePos)
 				{
@@ -297,13 +279,13 @@ namespace ws
 
 			if (length >= _writePos)
 			{
-				out.writeBytes(*this, 0, _writePos);
+				out.writeData(_data, _writePos);
 				truncate();
 			}
 			else
 			{
 				_writePos -= length;
-				out.writeBytes(*this, _writePos, length);
+				out.writeData(data(_writePos), length);
 				if (_readPos > _writePos)
 				{
 					_readPos = _writePos;
@@ -362,29 +344,6 @@ namespace ws
 			std::swap(_readPos, other._readPos);
 			std::swap(_writePos, other._writePos);
 			std::swap(_capacity, other._capacity);
-			/*auto tmp = _data;
-			_data = other._data;
-			other._data = tmp;
-
-			auto pos = _readPos;
-			_readPos = other._readPos;
-			other._readPos = pos;
-
-			pos = _writePos;
-			_writePos = other._writePos;
-			other._writePos = pos;
-
-			pos = _capacity;
-			_capacity = other._capacity;
-			other._capacity = pos;
-
-			auto tmp2 = isAttached;
-			isAttached = other.isAttached;
-			other.isAttached = tmp2;
-
-			tmp2 = _readOnly;
-			_readOnly = other._readOnly;
-			other._readOnly = tmp2;*/
 		}
 	}
 }
