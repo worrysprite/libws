@@ -199,7 +199,7 @@ namespace ws
 			ByteArray& writeType(const T& val)
 			{
 				if (readOnly())
-					throw std::exception("read only memory blocks!!");
+					throw std::logic_error("read only memory blocks!!");
 
 				constexpr auto typeSize = sizeof(T);
 				expand(_writePos + typeSize);
@@ -226,7 +226,7 @@ namespace ws
 			ByteArray& operator<<(const T& val)
 			{
 				if (readOnly())
-					throw std::exception("read only memory blocks!!");
+					throw std::logic_error("read only memory blocks!!");
 
 				constexpr auto typeSize = sizeof(T);
 				expand(_writePos + typeSize);
