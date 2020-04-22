@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <thread>
+#include <mutex>
 
 #include "ws/network/NetDef.h"
 #include "ws/core/ByteArray.h"
