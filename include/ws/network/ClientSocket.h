@@ -16,8 +16,8 @@ namespace ws
 		class ClientSocket
 		{
 		public:
-			ClientSocket() :sockfd(0), status(SocketStatus::DISCONNECTED),
-				isExit(false), _remotePort(0), lastStatus(SocketStatus::DISCONNECTED) {}
+			ClientSocket() :_remotePort(0), lastStatus(SocketStatus::DISCONNECTED),
+				status(SocketStatus::DISCONNECTED),	sockfd(0), isExit(false) {}
 
 			virtual ~ClientSocket();
 

@@ -32,7 +32,7 @@ namespace ws
 			resizeMap(map.getWidth(), map.getHeight());
 			for (auto nodes : mapNodes)
 			{
-				memset(nodes, 0, sizeof(PathNode) * NUM_NODE_SIZE);
+				memset(static_cast<void*>(nodes), 0, sizeof(PathNode) * NUM_NODE_SIZE);
 			}
 
 			if (!heuristic)	//未指定估值函数，默认使用哈曼顿估值函数
@@ -82,14 +82,13 @@ namespace ws
 				debug(current, 'x');
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
 #endif
-
 				//遍历周围的格子
 				for (int x = current->x - 1; x <= current->x + 1; ++x)
 				{
-					if (x < 0 || x >= map.getWidth()) continue;	//超出地图范围
+					if (x < 0 || static_cast<uint32_t>(x) >= map.getWidth()) continue;	//超出地图范围
 					for (int y = current->y - 1; y <= current->y + 1; ++y)
 					{
-						if (y < 0 || y >= map.getHeight()) continue;	//超出地图范围
+						if (y < 0 || static_cast<uint32_t>(y) >= map.getHeight()) continue;	//超出地图范围
 
 						if (x == current->x && y == current->y)
 							continue;	//当前点
@@ -158,7 +157,7 @@ namespace ws
 
 			int row = index / NUM_NODE_SIZE;
 			int col = index - row * NUM_NODE_SIZE;
-			if (row < mapNodes.size())
+			if (static_cast<size_t>(row) < mapNodes.size())
 			{
 				PathNode* node = &mapNodes[row][col];
 				node->x = x;

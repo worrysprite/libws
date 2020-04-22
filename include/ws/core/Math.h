@@ -6,7 +6,9 @@
 #include <math.h>
 #include <algorithm>
 
+#ifdef _WIN32
 #pragma warning(disable:26451)
+#endif
 
 namespace ws
 {
@@ -186,6 +188,8 @@ namespace ws
 		};
 	}
 }
+#ifdef _WIN32
 #pragma warning(default: 26451)
+#endif
 
 #endif

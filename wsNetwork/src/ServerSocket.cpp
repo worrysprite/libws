@@ -8,8 +8,9 @@ using namespace ws::network;
 
 //===================== Client Implements ========================
 // socket threads
-Client::Client() : server(nullptr), socket(0), readerBuffer(BUFFER_SIZE),
-isClosing(false), writerBuffer(BUFFER_SIZE), hasNewData(false), id(0)
+Client::Client() : id(0), lastActiveTime(0), socket(0), server(nullptr),
+	readerBuffer(BUFFER_SIZE), writerBuffer(BUFFER_SIZE),
+	isClosing(false), hasNewData(false)
 {
 	memset(&addr, 0, sizeof(addr));
 }
@@ -408,11 +409,8 @@ void ServerSocket::writeClientBuffer(Client& client, char* data, size_t size)
 //-----------------------linux implements start-------------------------------
 #elif defined(__linux__)
 // main thread
-ServerSocket::ServerSocket() :
-isExit(false), epfd(0), listenSocket(0)
-{
-	
-}
+ServerSocket::ServerSocket() : numClients(0), listenSocket(0),
+	epfd(0), pipe_fd{0,0}, isExit(false) {}
 
 int ServerSocket::processEventThread()
 {

@@ -2,8 +2,8 @@
 #define __WS_CORE_BYTEARRAY_H__
 
 #include <string>
-#include <mutex>
-#include <memory.h>
+#include <stdexcept>
+#include <string.h>
 
 namespace ws
 {
@@ -47,8 +47,7 @@ namespace ws
 			inline void writePosition(size_t value)
 			{
 				if (_readOnly) return;
-				_writePos = (isAttached || value > _capacity) ?
-					_writePos = _capacity : value;
+				_writePos = value > _capacity ? _capacity : value;
 			}
 
 			//往前或往后移动读位置

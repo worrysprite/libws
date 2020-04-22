@@ -1,4 +1,5 @@
 #include <functional>
+#include <mutex>
 #include "ws/network/ClientSocket.h"
 #include "ws/core/Log.h"
 

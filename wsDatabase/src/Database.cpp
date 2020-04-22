@@ -9,10 +9,9 @@ using namespace ws::database;
 
 //===================== Recordset Implements ========================
 Recordset::Recordset(MYSQL_RES* pMysqlRes, const std::string& sql) :
-	fieldIndex(0), mysqlRes(pMysqlRes), sql(sql)
+	fieldIndex(0), mysqlRow(nullptr), mysqlRes(pMysqlRes), sql(sql)
 {
 	numFields = mysql_num_fields(mysqlRes);
-	mysqlRow = NULL;
 }
 
 Recordset::~Recordset()
@@ -214,9 +213,10 @@ void Recordset::skipFields(int num)
 
 //===================== MysqlStatement Implements ========================
 
-DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) : resultIndex(0),
-	_sql(sql), stmt(mysql_stmt), paramBind(nullptr), paramIndex(0), _numParams(0), paramsBuffer(nullptr),
-	_numResultFields(0), resultBind(nullptr), resultMetadata(nullptr), _numRows(0), _lastInsertId(0)
+DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) : paramIndex(0),
+	_numParams(0), resultIndex(0), _numResultFields(0), _numRows(0), _lastInsertId(0),
+	_sql(sql), stmt(mysql_stmt), paramBind(nullptr), resultBind(nullptr),
+	resultMetadata(nullptr), paramsBuffer(nullptr)
 {
 	// bind params
 	_numParams = (int)mysql_stmt_param_count(stmt);
@@ -827,14 +827,14 @@ DBQueue::~DBQueue()
 	}
 }
 
-void DBQueue::setThread(int numThread)
+void DBQueue::setThread(uint32_t numThread)
 {
 	if (workerThreads.size() < numThread)
 	{
 		//add more threads
-		for (int i = (int)workerThreads.size(); i < numThread; i++)
+		for (uint32_t i = workerThreads.size(); i < numThread; i++)
 		{
-			workerThreads.push_back(std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this, (int)workerThreads.size() + 1)));
+			workerThreads.push_back(std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this)));
 		}
 	}
 	else
@@ -891,9 +891,9 @@ void DBQueue::finishRequest(DBRequestPtr request)
 	finishQueue.push_back(request);
 }
 
-void DBQueue::DBWorkThread(int id)
+void DBQueue::DBWorkThread()
 {
-	Database db(id);
+	Database db;
 	db.setDBConfig(config);
 	DBRequestPtr request;
 	const std::chrono::milliseconds requestWait(100);

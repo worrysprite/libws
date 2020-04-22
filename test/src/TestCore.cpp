@@ -198,18 +198,18 @@ bool testAStar()
 		}
 
 	private:
+		bool* map;
 		uint32_t width;
 		uint32_t height;
-		bool* map;
 	};
 
 	GameMap map((bool*)blockData, WIDTH, HEIGHT);
 
 	char graph[HEIGHT][WIDTH + 5] = { 0 };
-	for (int y = 0; y < HEIGHT; ++y)
+	for (uint32_t y = 0; y < HEIGHT; ++y)
 	{
 		sprintf(graph[y], "%03d ", y);
-		for (int x = 0; x < WIDTH; ++x)
+		for (uint32_t x = 0; x < WIDTH; ++x)
 		{
 			if (map.isBlock(x, y))
 			{
@@ -236,7 +236,7 @@ bool testAStar()
 		{
 			graph[node->y][node->x + 4] = '*';
 		}
-		for (int y = 0; y < HEIGHT; ++y)
+		for (uint32_t y = 0; y < HEIGHT; ++y)
 		{
 			std::cout << graph[y] << std::endl;
 		}

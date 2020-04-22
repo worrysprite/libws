@@ -5,8 +5,8 @@ namespace ws
 {
 	namespace core
 	{
-		ByteArray::ByteArray(size_t length) :_capacity(length), _readOnly(false),
-			_readPos(0), _writePos(0), isAttached(false)
+		ByteArray::ByteArray(size_t length) :isAttached(false), _readOnly(false), 
+			_readPos(0), _writePos(0), _capacity(length)
 		{
 			if (!length)
 			{
@@ -18,9 +18,8 @@ namespace ws
 			memset(_data, 0, length);
 		}
 
-		ByteArray::ByteArray(const ByteArray& other) :_capacity(other._capacity),
-			_readPos(other._readPos), _writePos(other._writePos),
-			_readOnly(other._readOnly), isAttached(other.isAttached)
+		ByteArray::ByteArray(const ByteArray& other) :isAttached(other.isAttached), _readOnly(other._readOnly), 
+			_readPos(other._readPos), _writePos(other._writePos), _capacity(other._capacity)
 		{
 			if (isAttached)
 			{
@@ -36,8 +35,7 @@ namespace ws
 		}
 
 		ByteArray::ByteArray(const void* bytes, size_t length, bool copy /*= false*/) :
-			_capacity(length), _readPos(0), _writePos(length),
-			isAttached(!copy), _readOnly(!copy)
+			isAttached(!copy), _readOnly(!copy), _readPos(0), _writePos(length), _capacity(length)
 		{
 			if (copy)
 			{
@@ -52,10 +50,8 @@ namespace ws
 			}
 		}
 
-		ByteArray::ByteArray(ByteArray&& rvalue) noexcept :
-			_data(rvalue._data), _capacity(rvalue._capacity),
-			_readPos(rvalue._readPos), _writePos(rvalue._writePos),
-			isAttached(rvalue.isAttached), _readOnly(rvalue._readOnly)
+		ByteArray::ByteArray(ByteArray&& rvalue) noexcept : isAttached(rvalue.isAttached), _readOnly(rvalue._readOnly),
+			_data(rvalue._data), _readPos(rvalue._readPos), _writePos(rvalue._writePos), _capacity(rvalue._capacity)
 		{
 			rvalue._data = nullptr;
 			rvalue._capacity = 0;
@@ -106,9 +102,9 @@ namespace ws
 			}
 			if (length > 0)
 			{
-				std::string str((const char*)readerPointer(), length);
+				const char* cstr = (const char*)readerPointer();
 				_readPos += length;
-				return std::move(str);
+				return std::string(cstr, length);
 			}
 			return std::string();
 		}

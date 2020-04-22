@@ -25,8 +25,8 @@ namespace ws
 		class PathNode
 		{
 		public:
-			PathNode(int x = 0, int y = 0) : isClosed(false),
-				parent(nullptr), x(x), y(y), g(0), f(0), h(0) {}
+			PathNode(int x = 0, int y = 0) : x(x), y(y),
+				h(0), g(0), f(0), isClosed(false), parent(nullptr) {}
 
 			int x;
 			int y;

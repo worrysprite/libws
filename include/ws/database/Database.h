@@ -144,8 +144,7 @@ namespace ws
 		class Database
 		{
 		public:
-			Database() :mysql(nullptr), id(0), _hasError(false), numAffectedRows(0), numResultRows(0){}
-			Database(int _id) :mysql(nullptr), id(_id), _hasError(false), numAffectedRows(0), numResultRows(0){}
+			Database() :mysql(nullptr), numAffectedRows(0), numResultRows(0), _hasError(false) {}
 			virtual ~Database();
 
 			/************************************************************************/
@@ -196,18 +195,17 @@ namespace ws
 			my_ulonglong									numResultRows;
 			bool											_hasError;
 			std::unordered_map<std::string, DBStatement*>	stmtCache;
-			int												id;
 		};
 
 		//数据库队列
 		class DBQueue
 		{
 		public:
-			DBQueue(const MYSQL_CONFIG& cfg) : config(cfg), isExit(false), workQueueLength(0) {}
+			DBQueue(const MYSQL_CONFIG& cfg) :isExit(false), config(cfg), workQueueLength(0) {}
 			virtual ~DBQueue();
 
 			//设置数据库并发线程数
-			void				setThread(int numThread);
+			void				setThread(uint32_t numThread);
 			//添加一个数据库请求到队列
 			void				addRequest(DBRequestPtr request);
 			//业务线程通过update完成数据库请求，获取结果
@@ -219,16 +217,16 @@ namespace ws
 			typedef std::list<DBRequestPtr> DBRequestList;
 			DBRequestPtr		getRequest();
 			void				finishRequest(DBRequestPtr request);
-			void				DBWorkThread(int id);
+			void				DBWorkThread();
 
+			bool						isExit;
 			MYSQL_CONFIG				config;
 			std::mutex					workMtx;
 			DBRequestList				workQueue;
 			size_t						workQueueLength;
 			std::mutex					finishMtx;
 			DBRequestList				finishQueue;
-			bool						isExit;
-			std::vector<std::unique_ptr<std::thread>>	workerThreads;
+			std::list<std::unique_ptr<std::thread>>	workerThreads;
 		};
 	}
 }

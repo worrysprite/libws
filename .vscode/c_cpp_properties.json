@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/usr/local/include/c++/9.2.0",
+                "/usr/local/include/c++/9.2.0/x86_64-pc-linux-gnu",
+                "/usr/local/include/c++/9.2.0/backward",
+				"/usr/local/lib/gcc/x86_64-pc-linux-gnu/9.2.0/include",
+				"/usr/local/lib/gcc/x86_64-pc-linux-gnu/9.2.0/include-fixed",
+				"/usr/include/mysql",
+				"${workspaceFolder}/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/local/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
