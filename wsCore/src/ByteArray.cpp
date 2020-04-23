@@ -62,12 +62,12 @@ namespace ws
 
 		size_t ByteArray::readBytes(ByteArray& outBytes, size_t length /*= 0*/) const
 		{
-			if (length == 0 || length > readAvailable())	//读取数据量限制
-			{
-				length = readAvailable();
-			}
 			if (length > 0)
 			{
+				if (length > readAvailable())	//读取数据量限制
+				{
+					length = readAvailable();
+				}
 				outBytes.expand(outBytes.size() + length);
 				memcpy(outBytes.writerPointer(), readerPointer(), length);
 				outBytes._writePos += length;
