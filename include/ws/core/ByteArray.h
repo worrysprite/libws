@@ -127,7 +127,7 @@ namespace ws
 			/* 将剩余数据全部读到另一个ByteArray中                                    */
 			/* outBytes	要读入的目标ByteArray，从outBytes末尾写入                     */
 			/************************************************************************/
-			size_t readBytes(ByteArray& outBytes) const { readBytes(outBytes, readAvailable()); }
+			size_t readBytes(ByteArray& outBytes) const { return readBytes(outBytes, readAvailable()); }
 
 			/************************************************************************/
 			/* 将数据读到一个内存块中                                                 */
