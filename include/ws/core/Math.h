@@ -181,6 +181,29 @@ namespace ws
 		class Rectangle
 		{
 		public:
+			Rectangle(T x = 0, T y = 0, T width = 0, T height = 0) :
+				x(x), y(y), width(width), height(height) {}
+
+			//获取矩形范围内的一个随机点
+			Vector2D<T> randomPoint() const
+			{
+				if constexpr (std::is_integral<T>::value)
+				{
+					return Vector2D<T>(
+						x + static_cast<T>(Math::random(0, width)),
+						y + static_cast<T>(Math::random(0, height))
+					);
+				}
+				else if constexpr (std::is_floating_point<T>::value)
+				{
+					return Vector2D<T>(
+						x + static_cast<T>(Math::random() * width),
+						y + static_cast<T>(Math::random() * height)
+					);
+				}
+			}
+
+		public:
 			T		x;
 			T		y;
 			T		width;
