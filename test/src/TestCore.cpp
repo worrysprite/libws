@@ -6,6 +6,7 @@
 #include "ws/core/Math.h"
 #include "ws/core/Log.h"
 #include "ws/core/AStar.h"
+#include "ws/core/TimeTool.h"
 
 using namespace ws::core;
 
@@ -126,6 +127,9 @@ bool testByteArray()
 		ts2.u32 << std::endl <<
 		ts2.i64 << std::endl <<
 		ts2.u64 << std::endl;
+
+	b2.seek(-8);
+	std::cout << "last 8 bytes data:" << b2.readUInt64() << std::endl;
 	std::cout << std::endl;
 	return true;
 }

@@ -37,7 +37,7 @@ namespace ws
 			//获取读位置
 			inline size_t readPosition() const { return _readPos; }
 			//设置读位置
-			inline void readPosition(size_t value)
+			inline void readPosition(size_t value) const
 			{
 				_readPos = value > _writePos ? _writePos : value;
 			}
@@ -51,7 +51,7 @@ namespace ws
 			}
 
 			//往前或往后移动读位置
-			inline void seek(int pos)
+			inline void seek(int pos) const
 			{
 				if (pos > 0)
 				{
