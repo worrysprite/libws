@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <type_traits>
+#include <memory>
 
 #define GET_FIELD_SIZE(from, to) ((uintptr_t)&to-(uintptr_t)&from+sizeof(to))
 #define ZERO_INIT(from, to) memset(&from, 0, GET_FIELD_SIZE(from, to))
@@ -126,6 +127,7 @@ namespace ws
 		template<template<typename E> class Tmpl, typename E>
 		struct is_shared_ptr<Tmpl<E>>
 		{
+			using element_type = E;
 			static constexpr bool value = std::is_same<Tmpl<E>, std::shared_ptr<E>>::value;
 		};
 
@@ -135,12 +137,14 @@ namespace ws
 		template<template<typename E> class Tmpl, typename E>
 		struct is_unique_ptr<Tmpl<E>>
 		{
+			using element_type = E;
 			static constexpr bool value = std::is_same<Tmpl<E>, std::unique_ptr<E, std::default_delete<E>>>::value;
 		};
 
 		template<template<typename E, typename D> class Tmpl, typename E, typename D>
 		struct is_unique_ptr<Tmpl<E, D>>
 		{
+			using element_type = E;
 			static constexpr bool value = std::is_same<Tmpl<E, D>, std::unique_ptr<E, D>>::value;
 		};
 
