@@ -289,3 +289,22 @@ bool testEnum()
 	std::cout << "enum FileOperation validate 5 result: " << validateEnum<FileOperation>(5) << std::endl;
 	return true;
 }
+
+bool testTypeCheck()
+{
+	std::shared_ptr<int> a;
+	std::unique_ptr<std::string> b;
+
+	std::cout << "check is_smart_ptr: " << std::endl;
+	std::cout << std::boolalpha << is_smart_ptr<int>::value << std::endl;
+	std::cout << std::boolalpha << is_smart_ptr<const int*>::value << std::endl;
+	std::cout << std::boolalpha << is_smart_ptr<std::shared_ptr<int>>::value << std::endl;
+	std::cout << std::boolalpha << is_smart_ptr<decltype(a)>::value << std::endl;
+
+ 	std::cout << std::boolalpha << is_smart_ptr<std::string>::value << std::endl;
+ 	std::cout << std::boolalpha << is_smart_ptr<std::unique_ptr<std::string>>::value << std::endl;
+ 	std::cout << std::boolalpha << is_smart_ptr<decltype(b)>::value << std::endl;
+
+	std::cout << std::endl;
+	return true;
+}
