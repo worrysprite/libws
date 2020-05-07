@@ -1,5 +1,4 @@
 #include "ws/database/Database.h"
-#include "ws/core/Log.h"
 #include <string.h>
 #include <stdlib.h>
 #include <iostream>
@@ -25,87 +24,6 @@ bool Recordset::nextRow()
 	fieldIndex = 0;
 	mysqlRow = mysql_fetch_row(mysqlRes);
 	return (mysqlRow != NULL);
-}
-
-Recordset& Recordset::operator >> (int8_t& value)
-{
-	return getInt(value);
-}
-
-Recordset& Recordset::operator >> (uint8_t& value)
-{
-	return getInt(value);
-}
-
-Recordset& Recordset::operator >> (int16_t& value)
-{
-	return getInt(value);
-}
-
-Recordset& Recordset::operator >> (uint16_t& value)
-{
-	return getInt(value);
-}
-
-Recordset& Recordset::operator >> (int32_t& value)
-{
-	return getInt(value);
-}
-
-Recordset& Recordset::operator >> (uint32_t& value)
-{
-	return getInt(value);
-}
-
-Recordset& Recordset::operator>>(int64_t& value)
-{
-	if (mysqlRow && fieldIndex < numFields)
-	{
-		const char* szRow = mysqlRow[fieldIndex++];
-		if (szRow)
-		{
-			value = atoll(szRow);
-		}
-	}
-	else
-	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
-	}
-	return *this;
-}
-
-Recordset& Recordset::operator >> (uint64_t& value)
-{
-	if (mysqlRow && fieldIndex < numFields)
-	{
-		const char* szRow = mysqlRow[fieldIndex++];
-		if (szRow)
-		{
-			value = strtoull(szRow, nullptr, 10);
-		}
-	}
-	else
-	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
-	}
-	return *this;
-}
-
-Recordset& Recordset::operator >> (std::string& value)
-{
-	if (mysqlRow && fieldIndex < numFields)
-	{
-		const char* szRow = mysqlRow[fieldIndex++];
-		if (szRow)
-		{
-			value = szRow;
-		}
-	}
-	else
-	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
-	}
-	return *this;
 }
 
 Recordset& Recordset::operator>>(float& value)
@@ -142,6 +60,23 @@ Recordset& Recordset::operator>>(double& value)
 	return *this;
 }
 
+Recordset& Recordset::operator>>(std::string& value)
+{
+	if (mysqlRow && fieldIndex < numFields)
+	{
+		const char* szRow = mysqlRow[fieldIndex++];
+		if (szRow)
+		{
+			value = szRow;
+		}
+	}
+	else
+	{
+		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
+	}
+	return *this;
+}
+
 Recordset& Recordset::operator>>(ByteArray& value)
 {
 	if (mysqlRow && fieldIndex < numFields)
@@ -164,26 +99,9 @@ Recordset& Recordset::operator>>(ByteArray& value)
 	return *this;
 }
 
-template<typename T>
-Recordset& Recordset::getInt(T& value)
-{
-	if (mysqlRow && fieldIndex < numFields)
-	{
-		const char* szRow = mysqlRow[fieldIndex++];
-		if (szRow)
-		{
-			value = atoi(szRow);
-		}
-	}
-	else
-	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
-	}
-	return *this;
-}
-
 void* Recordset::getBlob(unsigned long& datasize)
 {
+	void* data = nullptr;
 	if (mysqlRow && fieldIndex < numFields)
 	{
 		MYSQL_FIELD* field = mysql_fetch_field_direct(mysqlRes, fieldIndex);
@@ -193,9 +111,8 @@ void* Recordset::getBlob(unsigned long& datasize)
 			if (datasize > 0)
 			{
 				const char* szRow = mysqlRow[fieldIndex++];
-				void* data = malloc(datasize);
+				data = malloc(datasize);
 				memcpy(data, szRow, datasize);
-				return data;
 			}
 		}
 	}
@@ -203,12 +120,7 @@ void* Recordset::getBlob(unsigned long& datasize)
 	{
 		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
 	}
-	return nullptr;
-}
-
-void Recordset::skipFields(int num)
-{
-	fieldIndex += num;
+	return data;
 }
 
 //===================== MysqlStatement Implements ========================
@@ -317,73 +229,6 @@ DBStatement::~DBStatement()
 	}
 }
 
-template<typename T>
-DBStatement& DBStatement::bindNumberParam(T& value, enum_field_types type, bool isUnsigned)
-{
-	if (paramIndex < _numParams)
-	{
-		MYSQL_BIND& b = paramBind[paramIndex++];
-		b.buffer_type = type;
-		b.buffer = &value;
-		b.is_unsigned = isUnsigned;
-	}
-	else
-	{
-		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
-	}
-	return *this;
-}
-
-DBStatement& DBStatement::operator<<(int8_t& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_TINY, false);
-}
-
-DBStatement& DBStatement::operator<<(uint8_t& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_TINY, true);
-}
-
-DBStatement& DBStatement::operator<<(int16_t& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_SHORT, false);
-}
-
-DBStatement& DBStatement::operator<<(uint16_t& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_SHORT, true);
-}
-
-DBStatement& DBStatement::operator<<(int32_t& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_LONG, false);
-}
-
-DBStatement& DBStatement::operator<<(uint32_t& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_LONG, true);
-}
-
-DBStatement& DBStatement::operator<<(int64_t& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_LONGLONG, false);
-}
-
-DBStatement& DBStatement::operator<<(uint64_t& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_LONGLONG, true);
-}
-
-DBStatement& DBStatement::operator<<(float& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_FLOAT, false);
-}
-
-DBStatement& DBStatement::operator<<(double& value)
-{
-	return bindNumberParam(value, MYSQL_TYPE_DOUBLE, false);
-}
-
 DBStatement& DBStatement::operator<<(const std::string& value)
 {
 	if (paramIndex < _numParams)
@@ -404,7 +249,24 @@ DBStatement& DBStatement::operator<<(const std::string& value)
 	return *this;
 }
 
-DBStatement& DBStatement::operator<<(ByteArray& value)
+DBStatement& DBStatement::bindString(const char* value, unsigned long length)
+{
+	if (paramIndex < _numParams)
+	{
+		MYSQL_BIND& b = paramBind[paramIndex];
+		b.buffer_type = MYSQL_TYPE_VAR_STRING;
+		b.buffer = (void*)value;
+		b.buffer_length = length;
+		++paramIndex;
+	}
+	else
+	{
+		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+	}
+	return *this;
+}
+
+DBStatement& DBStatement::operator<<(const ByteArray& value)
 {
 	if (paramIndex < _numParams)
 	{
@@ -414,7 +276,6 @@ DBStatement& DBStatement::operator<<(ByteArray& value)
 		memcpy(b.buffer, value.data(), value.size());
 		paramsBuffer[paramIndex] = b.buffer;
 		b.buffer_length = (unsigned long)value.size();
-		b.length = &b.buffer_length;
 		++paramIndex;
 	}
 	else
@@ -424,25 +285,7 @@ DBStatement& DBStatement::operator<<(ByteArray& value)
 	return *this;
 }
 
-DBStatement& DBStatement::bindString(const char* value, unsigned long* length)
-{
-	if (paramIndex < _numParams)
-	{
-		MYSQL_BIND& b = paramBind[paramIndex];
-		b.buffer_type = MYSQL_TYPE_VAR_STRING;
-		b.buffer = (void*)value;
-		b.buffer_length = *length;
-		b.length = length;
-		++paramIndex;
-	}
-	else
-	{
-		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
-	}
-	return *this;
-}
-
-void DBStatement::bindBlob(enum_field_types type, void* data, unsigned long* size)
+void DBStatement::bindBlob(enum_field_types type, void* data, unsigned long size)
 {
 	if (paramIndex < _numParams)
 	{
@@ -451,8 +294,7 @@ void DBStatement::bindBlob(enum_field_types type, void* data, unsigned long* siz
 		{
 			b.buffer_type = type;
 			b.buffer = data;
-			b.buffer_length = *size;
-			b.length = size;
+			b.buffer_length = size;
 		}
 		else
 		{
@@ -533,92 +375,17 @@ void DBStatement::reset()
 	resultIndex = 0;
 }
 
-template<typename T>
-DBStatement& DBStatement::getNumberValue(T& value)
-{
-	if (resultIndex < _numResultFields)
-	{
-		if (IS_NUM(resultBind[resultIndex].buffer_type))
-		{
-			if (*resultBind[resultIndex].is_null)
-			{
-				value = 0;
-			}
-			else
-			{
-				value = *(T*)resultBind[resultIndex].buffer;
-			}
-		}
-		++resultIndex;
-	}
-	else
-	{
-		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
-	}
-	return *this;
-}
-
-DBStatement& DBStatement::operator>>(int8_t& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(uint8_t& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(int16_t& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(uint16_t& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(int32_t& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(uint32_t& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(int64_t& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(uint64_t& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(float& value)
-{
-	return getNumberValue(value);
-}
-
-DBStatement& DBStatement::operator>>(double& value)
-{
-	return getNumberValue(value);
-}
-
 DBStatement& DBStatement::operator>>(std::string& value)
 {
 	if (resultIndex < _numResultFields)
 	{
 		if (*resultBind[resultIndex].is_null)
 		{
-			value = "";
+			value.clear();
 		}
 		else
 		{
-			value = std::string((char*)resultBind[resultIndex].buffer, *resultBind[resultIndex].length);
+			value.assign((char*)resultBind[resultIndex].buffer, *resultBind[resultIndex].length);
 		}
 		++resultIndex;
 	}
@@ -649,23 +416,22 @@ DBStatement& DBStatement::operator>>(ByteArray& value)
 
 void* DBStatement::getBlob(unsigned long& datasize)
 {
+	void* data = nullptr;
 	datasize = *resultBind[resultIndex].length;
 	if (resultIndex < _numResultFields)
 	{
-		void* data = nullptr;
 		if (!(*resultBind[resultIndex].is_null) && datasize > 0)
 		{
 			data = malloc(datasize);
 			memcpy(data, resultBind[resultIndex].buffer, datasize);
 		}
 		++resultIndex;
-		return data;
 	}
 	else
 	{
 		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
-		return nullptr;
 	}
+	return data;
 }
 
 //===================== Database Implements ========================

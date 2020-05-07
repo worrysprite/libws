@@ -21,7 +21,7 @@ int main()
 	//assert(testAStar());
 	assert(testEnum());
 	assert(testTypeCheck());
-	//assert(testDatabase());
+	assert(testDatabase());
 
 	std::cout << "all tests passed!" << std::endl;
 

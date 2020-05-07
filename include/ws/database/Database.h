@@ -10,6 +10,7 @@
 #include <thread>
 #include <memory>
 #include "ws/core/ByteArray.h"
+#include "ws/core/Log.h"
 
 using namespace ws::core;
 
@@ -38,50 +39,141 @@ namespace ws
 			DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt);
 			~DBStatement();
 
+			//绑定整型参数，需要保证value的生命周期在execute()之后！
 			template<typename T>
-			DBStatement& bindNumberParam(T& value, enum_field_types type, bool isUnsigned);
-			DBStatement& operator<<(int8_t& value);
-			DBStatement& operator<<(uint8_t& value);
-			DBStatement& operator<<(int16_t& value);
-			DBStatement& operator<<(uint16_t& value);
-			DBStatement& operator<<(int32_t& value);
-			DBStatement& operator<<(uint32_t& value);
-			DBStatement& operator<<(int64_t& value);
-			DBStatement& operator<<(uint64_t& value);
-			DBStatement& operator<<(float& value);
-			DBStatement& operator<<(double& value);
-			DBStatement& operator<<(const std::string& value);
-			DBStatement& operator<<(ByteArray& value);
-			DBStatement& bindString(const char* value, unsigned long* length);
-			void bindBlob(enum_field_types type, void* data, unsigned long* size);
+			typename std::enable_if<std::is_integral<T>::value, DBStatement>::type&
+				operator<<(T& value)
+			{
+				if (paramIndex < _numParams)
+				{
+					MYSQL_BIND& b = paramBind[paramIndex++];
+					if constexpr (sizeof(T) == sizeof(int8_t))
+					{
+						b.buffer_type = MYSQL_TYPE_TINY;
+					}
+					else if constexpr (sizeof(T) == sizeof(int16_t))
+					{
+						b.buffer_type = MYSQL_TYPE_SHORT;
+					}
+					else if constexpr (sizeof(T) == sizeof(int32_t))
+					{
+						b.buffer_type = MYSQL_TYPE_LONG;
+					}
+					else if constexpr (sizeof(T) == sizeof(int64_t))
+					{
+						b.buffer_type = MYSQL_TYPE_LONGLONG;
+					}
+					b.buffer = &value;
+					b.is_unsigned = std::is_unsigned<T>::value;
+				}
+				else
+				{
+					Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+				}
+				return *this;
+			}
 
+			//绑定枚举类型参数，需要保证value的生命周期在execute()之后！
 			template<typename T>
-			DBStatement& getNumberValue(T& value);
-			DBStatement& operator>>(int8_t& value);
-			DBStatement& operator>>(uint8_t& value);
-			DBStatement& operator>>(int16_t& value);
-			DBStatement& operator>>(uint16_t& value);
-			DBStatement& operator>>(int32_t& value);
-			DBStatement& operator>>(uint32_t& value);
-			DBStatement& operator>>(int64_t& value);
-			DBStatement& operator>>(uint64_t& value);
-			DBStatement& operator>>(float& value);
-			DBStatement& operator>>(double& value);
+			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
+				operator<<(T& value)
+			{
+				return operator<<((typename std::underlying_type<T>::type&)value);
+			}
+
+			//绑定浮点数参数，需要保证value的生命周期在execute()之后！
+			DBStatement& operator<<(float& value) { return bindNumberParam(value, MYSQL_TYPE_FLOAT, false); }
+			DBStatement& operator<<(double& value) { return bindNumberParam(value, MYSQL_TYPE_DOUBLE, false); }
+
+			//绑定字符串参数，会复制字符串内容！
+			DBStatement& operator<<(const std::string& value);
+			//绑定字符串参数，不会复制内容，需要保证value的生命周期在execute()之后！
+			DBStatement& bindString(const char* value, unsigned long length);
+
+			//绑定二进制字节块，会复制内容！
+			DBStatement& operator<<(const ByteArray& value);
+			//绑定二进制数据，不会复制内容，需要保证data的生命周期在execute()之后！
+			void bindBlob(enum_field_types type, void* data, unsigned long size);
+
+			//获取算术类型字段值
+			template<typename T>
+			typename std::enable_if<std::is_arithmetic<T>::value, DBStatement>::type&
+				operator>>(T& value)
+			{
+				if (resultIndex < _numResultFields)
+				{
+					if (IS_NUM(resultBind[resultIndex].buffer_type))
+					{
+						if (*resultBind[resultIndex].is_null)
+						{
+							value = 0;
+						}
+						else
+						{
+							value = *(T*)resultBind[resultIndex].buffer;
+						}
+					}
+					++resultIndex;
+				}
+				else
+				{
+					Log::e("mysql get result out of range! sql=%s", _sql.c_str());
+				}
+				return *this;
+			}
+
+			//获取枚举类型字段值
+			template<typename T>
+			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
+				operator>>(T& value)
+			{
+				return operator>>((typename std::underlying_type<T>::type&)value);
+			}
+
+			//获取字符串字段值
 			DBStatement& operator>>(std::string& value);
+			//获取二进制字段值，会清空原ByteArray的数据！
 			DBStatement& operator>>(ByteArray& value);
+			//获取二进制字段值，数据长度会返回到datasize
 			void* getBlob(unsigned long& datasize);
 
 			//执行准备的语句，执行时必须保证绑定的参数生命周期有效性！
 			bool execute();
+			//将查询结果指针移动到下一行
 			bool nextRow();
+			//清空所有绑定和查询结果
 			void reset();
-
+			//跳过num个字段
 			inline void skipFields(int num){ resultIndex += num; }
+			//参数个数
 			inline int numParams(){ return _numParams; }
+			//查询结果的字段数量
 			inline int numResultFields(){ return _numResultFields; }
+			//结果行数或影响行数
 			inline my_ulonglong numRows(){ return _numRows; }
+			//最后一次插入id（自增id字段）
 			inline my_ulonglong lastInsertId(){ return _lastInsertId; }
+			//关联的sql语句
 			inline const std::string& sql() const { return _sql; }
+
+		private:
+			template<typename T>
+			typename std::enable_if<std::is_arithmetic<T>::value, DBStatement>::type&
+				bindNumberParam(T& value, enum_field_types type, bool isUnsigned)
+			{
+				if (paramIndex < _numParams)
+				{
+					MYSQL_BIND& b = paramBind[paramIndex++];
+					b.buffer_type = type;
+					b.buffer = &value;
+					b.is_unsigned = isUnsigned;
+				}
+				else
+				{
+					Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+				}
+				return *this;
+			}
 
 		private:
 			int				paramIndex;
@@ -104,21 +196,53 @@ namespace ws
 			Recordset(MYSQL_RES* pMysqlRes, const std::string& sql);
 			virtual ~Recordset();
 
+			//将查询结果指针移动到下一行
 			bool nextRow();
-			Recordset& operator >> (int8_t& value);
-			Recordset& operator >> (uint8_t& value);
-			Recordset& operator >> (int16_t& value);
-			Recordset& operator >> (uint16_t& value);
-			Recordset& operator >> (int32_t& value);
-			Recordset& operator >> (uint32_t& value);
-			Recordset& operator >> (int64_t& value);
-			Recordset& operator >> (uint64_t& value);
-			Recordset& operator >> (float& value);
-			Recordset& operator >> (double& value);
-			Recordset& operator >> (std::string& value);
-			Recordset& operator >> (ByteArray& value);
+
+			template<typename T>
+			typename std::enable_if<std::is_integral<T>::value, Recordset>::type&
+				operator>>(T& value)
+			{
+				if (mysqlRow && fieldIndex < numFields)
+				{
+					const char* szRow = mysqlRow[fieldIndex++];
+					if (szRow)
+					{
+						if constexpr (std::is_same<T, int64_t>::value)
+						{
+							value = atoll(szRow);
+						}
+						else if constexpr (std::is_same<T, uint64_t>::value)
+						{
+							value = strtoull(szRow, nullptr, 10);
+						}
+						else
+						{
+							value = atoi(szRow);
+						}
+					}
+				}
+				else
+				{
+					Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
+				}
+				return *this;
+			}
+
+			template<typename T>
+			typename std::enable_if<std::is_enum<T>::value, Recordset>::type&
+				operator>>(T& value)
+			{
+				return operator>>((typename std::underlying_type<T>::type&)value);
+			}
+
+			Recordset& operator>>(float& value);
+			Recordset& operator>>(double& value);
+			Recordset& operator>>(std::string& value);
+			Recordset& operator>>(ByteArray& value);
+
 			void*				getBlob(unsigned long& datasize);
-			void				skipFields(int num);
+			void				skipFields(int num) { fieldIndex += num; }
 
 		private:
 			uint32_t			fieldIndex;
@@ -126,9 +250,6 @@ namespace ws
 			MYSQL_ROW			mysqlRow;
 			MYSQL_RES*			mysqlRes;
 			std::string			sql;
-
-			template<typename T>
-			Recordset&			getInt(T& value);
 		};
 		typedef std::unique_ptr<Recordset> RecordsetPtr;
 
