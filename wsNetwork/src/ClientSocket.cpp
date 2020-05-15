@@ -2,8 +2,11 @@
 #include <mutex>
 #include "ws/network/ClientSocket.h"
 #include "ws/core/Log.h"
+#include "ws/core/TimeTool.h"
 
 using namespace ws::network;
+
+static constexpr uint64_t CONNECT_CD = 3000ULL;
 
 #ifdef _WIN32
 
@@ -49,6 +52,12 @@ void ClientSocket::workerProc()
 		{
 		case SocketStatus::CONNECTING:
 		{
+			uint64_t now = TimeTool::getSystemTime();
+			if (now < lastConnectTime + CONNECT_CD)
+			{
+				break;
+			}
+			lastConnectTime = now;
 			sockaddr_in addr;
 			memset(&addr, 0, sizeof(sockaddr_in));
 			addr.sin_family = AF_INET;

@@ -17,9 +17,7 @@ namespace ws
 		class ClientSocket
 		{
 		public:
-			ClientSocket() :_remotePort(0), lastStatus(SocketStatus::DISCONNECTED),
-				status(SocketStatus::DISCONNECTED),	sockfd(0), isExit(false) {}
-
+			ClientSocket(const ClientSocket&) = delete;	//不允许复制
 			virtual ~ClientSocket();
 
 			void connect(const std::string& ip, uint16_t port);
@@ -59,11 +57,12 @@ namespace ws
 				CONNECTING,
 				CONNECTED
 			};
-			SocketStatus					lastStatus;
-			SocketStatus					status;
-			Socket							sockfd;
+			SocketStatus					lastStatus = SocketStatus::DISCONNECTED;
+			SocketStatus					status = SocketStatus::DISCONNECTED;
+			Socket							sockfd = 0;
 			std::unique_ptr<std::thread>	workerThread;
-			bool							isExit;
+			bool							isExit = false;
+			uint64_t						lastConnectTime = 0;
 
 			void					workerProc();
 			bool					tryToRecv();
