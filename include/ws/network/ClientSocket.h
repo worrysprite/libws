@@ -17,6 +17,7 @@ namespace ws
 		class ClientSocket
 		{
 		public:
+			ClientSocket() = default;
 			ClientSocket(const ClientSocket&) = delete;	//不允许复制
 			virtual ~ClientSocket();
 
