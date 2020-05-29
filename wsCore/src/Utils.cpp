@@ -2,6 +2,7 @@
 
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 #include <unistd.h>
+#include <fcntl.h>
 #endif
 
 namespace ws::core
@@ -21,14 +22,15 @@ namespace ws::core
 		lock.l_whence = SEEK_SET;
 		lock.l_start = 0;
 		lock.l_len = 0;
-		if (fcntl(fd, F_SETLK, &lock) < 0)
+        lock.l_pid = getpid();
+		if (fcntl(fd, F_SETLK, &lock))
 		{
 			close(fd);
 			return false;
 		}
 		char buf[32] = { 0 };
-		sprintf(buf, "%d\n", getpid());
-		auto pidlength = strlen(buf);
+		sprintf(buf, "%d\n", lock.l_pid);
+		size_t pidlength = strlen(buf);
 		if (write(fd, buf, pidlength) != pidlength)
 		{
 			close(fd);

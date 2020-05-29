@@ -1,16 +1,15 @@
 #include <functional>
+#include <spdlog/spdlog.h>
 #include "ws/network/HttpClient.h"
-#include "ws/core/Log.h"
 
 using namespace ws::network;
-using namespace ws::core;
 
 HttpClient::HttpClient() :handle(nullptr), response(nullptr)
 {
 	handle = curl_easy_init();
 	if (!handle)
 	{
-		Log::e("curl_easy_init failed!");
+		spdlog::error("curl_easy_init failed!");
 	}
 }
 
@@ -49,11 +48,11 @@ void HttpClient::curlRequest(std::string url, const std::map<std::string, std::s
 		break;
 	}
 	curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
-	Log::d("curl requesting: %s", url.c_str());
+	spdlog::debug("curl requesting: %s", url.c_str());
 	CURLcode result = curl_easy_perform(handle);
 	if (result != CURLE_OK)
 	{
-		Log::w("curl request failed: %s", curl_easy_strerror(result));
+		spdlog::warn("curl request failed: %s", curl_easy_strerror(result));
 	}
 }
 
@@ -95,8 +94,6 @@ std::string HttpClient::buildQuery(const std::map<std::string, std::string>& par
 			{
 				outstr += Ssplit;
 			}
-		//	outstr += p.first;
-		//	outstr += "=";
 			if (isNeedEscape)
 			{
 				char* temp = curl_easy_escape(handle, p.second.c_str(), (int)p.second.length());
@@ -134,14 +131,14 @@ HttpQueue::~HttpQueue()
 {
 	if (workQueueLength > 0)
 	{
-		Log::w("HttpQueue remains %d requests aborted.", workQueueLength);
+		spdlog::warn("HttpQueue remains %d requests aborted.", workQueueLength);
 	}
 	isExit = true;
 	for (auto th : workerThreads)
 	{
 		th->join();
 		delete th;
-		Log::d("HttpQueue worker thread joined.");
+		spdlog::info("HttpQueue worker thread joined.");
 	}
 	curl_global_cleanup();
 }
@@ -175,7 +172,6 @@ void HttpQueue::update()
 	{
 		PtrHttpRequest request = tmpQueue.front();
 		tmpQueue.pop_front();
-		Log::d("curl response: %s", request->response.c_str());
 		request->onFinish();
 	}
 }

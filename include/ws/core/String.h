@@ -3,6 +3,7 @@
 
 #include <string>
 #include <time.h>
+#include <string.h>
 
 namespace ws::core::String
 {

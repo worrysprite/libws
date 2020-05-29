@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-			"name": "Linux",
+            "name": "Linux",
             "includePath": [
                 "/usr/local/include/c++/9.2.0",
                 "/usr/local/include/c++/9.2.0/x86_64-pc-linux-gnu",
@@ -16,7 +16,8 @@
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "gcc-x64",
-            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "configurationProvider": "vector-of-bool.cmake-tools"
         },
         {
             "name": "Win32",

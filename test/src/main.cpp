@@ -9,14 +9,16 @@ extern bool testAStar();
 extern bool testEnum();
 extern bool testTypeCheck();
 extern bool testDatabase();
+extern bool testPidfile();
 
 int main()
 {
+    assert(testPidfile());
 	assert(testSignal());
 	assert(testEvent());
 	assert(testByteArray());
 	assert(testMath());
-	//assert(testAStar());
+	assert(testAStar());
 	assert(testEnum());
 	assert(testTypeCheck());
 	assert(testDatabase());

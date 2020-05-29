@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include "ws/core/Signal.h"
 #include "ws/core/Event.h"
 #include "ws/core/ByteArray.h"
@@ -290,4 +291,15 @@ bool testTypeCheck()
 
 	std::cout << std::endl;
 	return true;
+}
+
+bool testPidfile()
+{
+    static const char PID_FILE[] = "/var/run/test.pid";
+    if (createPidfile(PID_FILE))
+    {
+        std::cout << "lock pidfile success!" << std::endl;
+        return true;
+    }
+    return false;
 }
