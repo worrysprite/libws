@@ -9,11 +9,15 @@ extern bool testAStar();
 extern bool testEnum();
 extern bool testTypeCheck();
 extern bool testDatabase();
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 extern bool testPidfile();
+#endif
 
 int main()
 {
-    assert(testPidfile());
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+	assert(testPidfile());
+#endif
 	assert(testSignal());
 	assert(testEvent());
 	assert(testByteArray());

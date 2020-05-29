@@ -293,6 +293,7 @@ bool testTypeCheck()
 	return true;
 }
 
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 bool testPidfile()
 {
     static const char PID_FILE[] = "/var/run/test.pid";
@@ -303,3 +304,4 @@ bool testPidfile()
     }
     return false;
 }
+#endif
