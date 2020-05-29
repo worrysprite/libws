@@ -38,7 +38,7 @@ Recordset& Recordset::operator>>(float& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
+		spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
 	}
 	return *this;
 }
@@ -55,7 +55,7 @@ Recordset& Recordset::operator>>(double& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
+		spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
 	}
 	return *this;
 }
@@ -72,7 +72,7 @@ Recordset& Recordset::operator>>(std::string& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
+		spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
 	}
 	return *this;
 }
@@ -94,7 +94,7 @@ Recordset& Recordset::operator>>(ByteArray& value)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
+		spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
 	}
 	return *this;
 }
@@ -118,7 +118,7 @@ void* Recordset::getBlob(unsigned long& datasize)
 	}
 	else
 	{
-		Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
+		spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
 	}
 	return data;
 }
@@ -189,7 +189,7 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) : param
 		}
 		if (mysql_stmt_bind_result(stmt, resultBind))
 		{
-			Log::e("mysql bind result failed: %s", mysql_stmt_error(stmt));
+			spdlog::error("mysql bind result failed: {}", mysql_stmt_error(stmt));
 		}
 	}
 }
@@ -244,7 +244,7 @@ DBStatement& DBStatement::operator<<(const std::string& value)
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+		spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
 	}
 	return *this;
 }
@@ -261,7 +261,7 @@ DBStatement& DBStatement::bindString(const char* value, unsigned long length)
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+		spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
 	}
 	return *this;
 }
@@ -280,7 +280,7 @@ DBStatement& DBStatement::operator<<(const ByteArray& value)
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+		spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
 	}
 	return *this;
 }
@@ -304,7 +304,7 @@ void DBStatement::bindBlob(enum_field_types type, void* data, unsigned long size
 	}
 	else
 	{
-		Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+		spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
 	}
 }
 
@@ -316,20 +316,20 @@ bool DBStatement::execute()
 	{
 		if (mysql_stmt_bind_param(stmt, paramBind))
 		{
-			Log::e("mysql bind params error");
+			spdlog::error("mysql bind params error");
 			return false;
 		}
 	}
 	if (mysql_stmt_execute(stmt))
 	{
-		Log::e("mysql execute failed: %s, sql=%s", mysql_stmt_error(stmt), _sql.c_str());
+		spdlog::error("mysql execute failed: {}, sql={}", mysql_stmt_error(stmt), _sql.c_str());
 		return false;
 	}
 	if (resultMetadata)
 	{
 		if (mysql_stmt_store_result(stmt))
 		{
-			Log::e("mysql store result failed: %s", mysql_stmt_error(stmt));
+			spdlog::error("mysql store result failed: {}", mysql_stmt_error(stmt));
 			return false;
 		}
 	}
@@ -349,10 +349,10 @@ bool DBStatement::nextRow()
 	case MYSQL_NO_DATA:
 		return false;
 	case MYSQL_DATA_TRUNCATED:
-		Log::w("mysql fetch truncated! sql=%s", _sql.c_str());
+		spdlog::warn("mysql fetch truncated! sql={}", _sql.c_str());
 		return true;
 	default:
-		Log::e("mysql fetch error: %s", mysql_stmt_error(stmt));
+		spdlog::error("mysql fetch error: {}", mysql_stmt_error(stmt));
 		return false;
 	}
 }
@@ -391,7 +391,7 @@ DBStatement& DBStatement::operator>>(std::string& value)
 	}
 	else
 	{
-		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
+		spdlog::error("mysql get result out of range! sql={}", _sql.c_str());
 	}
 	return *this;
 }
@@ -409,7 +409,7 @@ DBStatement& DBStatement::operator>>(ByteArray& value)
 	}
 	else
 	{
-		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
+		spdlog::error("mysql get result out of range! sql={}", _sql.c_str());
 	}
 	return *this;
 }
@@ -429,7 +429,7 @@ void* DBStatement::getBlob(unsigned long& datasize)
 	}
 	else
 	{
-		Log::e("mysql get result out of range! sql=%s", _sql.c_str());
+		spdlog::error("mysql get result out of range! sql={}", _sql.c_str());
 	}
 	return data;
 }
@@ -466,10 +466,10 @@ bool Database::logon()
 		{
 			mysql_autocommit(pMysql, 1);
 		}
-		Log::i("mysql connect successful.");
+		spdlog::info("mysql connect successful.");
 		return true;
 	}
-	Log::e("Fail to connect to mysql: %s", mysql_error(mysql));
+	spdlog::error("Fail to connect to mysql: {}", mysql_error(mysql));
 	return false;
 }
 
@@ -495,7 +495,7 @@ void Database::changeDatabase(const char* db)
 	{
 		if (mysql_select_db(mysql, db))
 		{
-			Log::e("Change db failed! db=%s", db);
+			spdlog::error("Change db failed! db={}", db);
 		}
 	}
 }
@@ -536,7 +536,7 @@ RecordsetPtr Database::query(const char* strSQL, int nCommit /*= 1*/)
 		pError = mysql_error(mysql);
 		if (pError)
 		{
-			Log::e("DBError: %s, SQL: %s", pError, strSQL);
+			spdlog::error("DBError: {}, SQL: {}", pError, strSQL);
 		}
 	}
 	return record;
@@ -556,7 +556,7 @@ DBStatement* Database::prepare(const std::string& sql)
 		MYSQL_STMT* stmt = mysql_stmt_init(mysql);
 		if (0 != mysql_stmt_prepare(stmt, sql.c_str(), (unsigned long)sql.length()))
 		{
-			Log::e("mysql prepare error, sql=%s, error=%s", sql.c_str(), mysql_stmt_error(stmt));
+			spdlog::error("mysql prepare error, sql={}, error={}", sql.c_str(), mysql_stmt_error(stmt));
 			mysql_stmt_close(stmt);
 			return nullptr;
 		}
@@ -582,14 +582,14 @@ DBQueue::~DBQueue()
 {
 	while (workQueueLength > 0)
 	{
-		Log::d("DBQueue waiting for db requests complete, remaining: %d", workQueueLength);
+		spdlog::debug("DBQueue waiting for db requests complete, remaining: {}", workQueueLength);
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 	this->isExit = true;
 	for (auto &th : workerThreads)
 	{
 		th->join();
-		Log::d("DBQueue worker thread joined.");
+		spdlog::debug("DBQueue worker thread joined.");
 	}
 }
 
@@ -598,7 +598,7 @@ void DBQueue::setThread(uint32_t numThread)
 	if (workerThreads.size() < numThread)
 	{
 		//add more threads
-		for (uint32_t i = workerThreads.size(); i < numThread; i++)
+		for (uint32_t i = (uint32_t)workerThreads.size(); i < numThread; i++)
 		{
 			workerThreads.push_back(std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this)));
 		}

@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include <chrono>
-#include "Log.h"
 
 #ifdef _WIN32
 #include <windows.h>

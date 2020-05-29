@@ -1,61 +1,159 @@
 #ifndef __WS_UTILS_STRING_H__
 #define __WS_UTILS_STRING_H__
 
-#include <vector>
 #include <string>
+#include <time.h>
 
-namespace ws
+namespace ws::core::String
 {
-	namespace core
+	/**
+	 * 按seperator分割str，并将每段原始char*地址结果存入output
+	 * 将会修改str（分割符改\0）
+	 * 若不包含seperator，output包含原始字符串
+	 */
+	template<class Container>
+	void split(char* str, const char* seperator, Container& output)
 	{
-		class String
+		size_t strLen = strlen(str);
+		if (!strLen)
 		{
-		public:
-			/************************************************************************/
-			/* 按seperator分割str，并将结果存入output，将会修改str                    */
-			/************************************************************************/
-			static void split(char* str, const char* seperator, std::vector<char*>& output);
-			/************************************************************************/
-			/* 按seperator分割str，并将结果存入output，不会修改str                    */
-			/************************************************************************/
-			static void split(const char* str, const char* seperator, std::vector<std::string>& output);
-			/************************************************************************/
-			/* 拼接数组里的所有字符串，用glue参数拼接                                 */
-			/************************************************************************/
-			static void join(const std::vector<std::string>& input, std::string& output, const char* glue = "");
-			//复制std::string字符串内容到dest，返回是否完整复制
-			static bool copy(char* dest, uint32_t size, const std::string& src);
-
-			static void toLowercase(char* str);
-			static void toUppercase(char* str);
-			/************************************************************************/
-			/* 判断字符串是否为可打印ASCII码                                          */
-			/************************************************************************/
-			static bool isPrintableString(const char* str);
-			/************************************************************************/
-			/* 将一个时间字符串格式化为unix timestamp，格式为yyyy/mm/dd hh:mm:ss      */
-			/************************************************************************/
-			static time_t formatTime(const std::string& time);
-			/************************************************************************/
-			/* 将一个unix timestamp转化为时间字符串，格式为yyyy/mm/dd hh:mm:ss        */
-			/************************************************************************/
-			static std::string formatTime(time_t time = 0);
-
-			//static std::string md5(const std::string input);
-
-			static std::string URLEncode(const std::string& input);
-			static std::string URLDecode(const std::string& input);
-			/************************************************************************/
-			/* 生成随机字符串，length指定长度，chars指定取值内容，默认为大小写字母和数字 */
-			/************************************************************************/
-			static std::string random(unsigned char length, const char* chars = nullptr);
-
-		private:
-			static std::string Bin2Hex(std::string input);
-			static char Char2Hex(const char& input);
-			static char Hex2Char(const char& input);
-		};
+			return;
+		}
+		size_t sepLength = strlen(seperator);
+		output.push_back(str);
+		while (*str != '\0' && strLen >= sepLength)
+		{
+			if (strncmp(str, seperator, sepLength) == 0)
+			{
+				*str = '\0';
+				str += sepLength;
+				strLen -= sepLength;
+				output.push_back(str);
+			}
+			else
+			{
+				++str;
+				--strLen;
+			}
+		}
 	}
+
+	/**
+	 * 按seperator分割str，并将每段的副本存入output
+	 * 不会修改原始str
+	 * 若不包含seperator，output包含原始字符串
+	 */
+	template<class Container>
+	void split(const char* str, const char* seperator, Container& output)
+	{
+		size_t strLen = strlen(str);
+		if (!strLen)
+		{
+			return;
+		}
+		size_t sepLength = strlen(seperator);
+		const char* ptr = str;
+		while (*str != '\0' && strLen >= sepLength)
+		{
+			if (strncmp(str, seperator, sepLength) == 0)
+			{
+				output.push_back(std::string(ptr, str - ptr));
+				str += sepLength;
+				ptr = str;
+				strLen -= sepLength;
+			}
+			else
+			{
+				++str;
+				--strLen;
+			}
+		}
+		output.push_back(std::string(ptr));
+	}
+
+	//拼接数组里的所有字符串，用glue参数拼接
+	template<template<class ...Args> class Container>
+	void join(const Container<std::string>& input, std::string& output, const char* glue = "")
+	{
+		if (input.empty())
+		{
+			output.clear();
+			return;
+		}
+		//先计算一次总长度
+		size_t totalLength = (input.size() - 1) * strlen(glue);
+		for (auto& str : input)
+		{
+			totalLength += str.size();
+		}
+		output.reserve(totalLength);
+		//开始拼接
+		auto iter = input.begin();
+		output = *iter++;
+		while (iter != input.end())
+		{
+			output += glue;
+			output += *iter++;
+		}
+	}
+
+	/**
+	 * 安全复制std::string内容到dest
+	 * asString为true会在末尾添加\0
+	 * 返回是否完整复制
+	 */
+	bool copy(char* dest, size_t size, const std::string& src, bool asString = true);
+	
+	//字符串转小写
+	void toLowercase(char* str);
+	//字符串转大写
+	void toUppercase(char* str);
+
+	/************************************************************************/
+	/* 检测字符串是否为可打印ASCII码                                          */
+	/************************************************************************/
+	bool isPrintableString(const char* str);
+
+	/************************************************************************/
+	/* 将一个时间字符串格式化为unix timestamp，支持以下格式                    */
+	/* yyyy/mm/dd hh:mm:ss                                                  */
+	/* yyyy-mm-dd hh:mm:ss                                                  */
+	/************************************************************************/
+	time_t formatTime(const char* time);
+
+	/**
+	 * 将一个unix timestamp转化为时间字符串
+	 * 指定格式详见strftime
+	 * @see https://zh.cppreference.com/w/c/chrono/strftime
+	 */
+	std::string formatTime(time_t time, const char* format);
+
+	/**
+	 * 将当前时间转化为字符串，格式为yyyy-mm-dd hh:mm:ss
+	 */
+	std::string formatTime()
+	{
+		return formatTime(::time(nullptr), "%F %T");
+	}
+
+	/**
+	 * 封装openssl计算md5，适合小量的数据
+	 * 返回md5结果的十六进制字符串
+	 */
+	std::string md5(const void* input, size_t length);
+
+	/**
+	 * 二进制转十六进制字符串
+	 */
+	std::string bin2Hex(const uint8_t* input, size_t length);
+
+	//同js的encodeURIComponent
+	std::string URLEncode(const char* input, size_t length);
+	//同js的decodeURIComponent
+	std::string URLDecode(const char* input, size_t length);
+
+	//生成随机字符串，length指定长度，chars指定取值内容，未指定则使用大小写字母和数字
+	std::string random(uint16_t length, const char* chars = nullptr);
 }
 
 #endif

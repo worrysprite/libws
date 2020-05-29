@@ -93,82 +93,79 @@ template<>							\
 struct EnableBitMaskOperators<x>	\
 {static constexpr bool enable = true;}
 
-/**
- * 验证枚举值的合法性，需要枚举类型提供MIN和MAX边界，有效区间[MIN, MAX)
- */
-template<typename Enum>
-typename std::enable_if<std::is_enum<Enum>::value, bool>::type
-	validateEnum(Enum rhs)
+namespace ws::core
 {
-	using underlying = typename std::underlying_type<Enum>::type;
-	return static_cast<underlying>(rhs) >= static_cast<underlying>(Enum::MIN) &&
-		static_cast<underlying>(rhs) < static_cast<underlying>(Enum::MAX);
-}
-
-/**
- * 验证枚举值的合法性，需要枚举类型提供MIN和MAX边界，有效区间[MIN, MAX)
- */
-template<typename Enum, typename IntType>
-typename std::enable_if<std::is_enum<Enum>::value && std::is_integral<IntType>::value, bool>::type
-	validateEnum(IntType rhs)
-{
-	using underlying = typename std::underlying_type<Enum>::type;
-	return static_cast<underlying>(rhs) >= static_cast<underlying>(Enum::MIN) &&
-		static_cast<underlying>(rhs) < static_cast<underlying>(Enum::MAX);
-}
-
-namespace ws
-{
-	namespace core
+	/**
+		 * 验证枚举值的合法性，需要枚举类型提供MIN和MAX边界，有效区间[MIN, MAX)
+		 */
+	template<typename Enum>
+	typename std::enable_if<std::is_enum<Enum>::value, bool>::type
+		validateEnum(Enum rhs)
 	{
-		template<typename T>
-		struct is_shared_ptr : std::false_type {};
-
-		template<template<typename E> class Tmpl, typename E>
-		struct is_shared_ptr<Tmpl<E>>
-		{
-			using element_type = E;
-			static constexpr bool value = std::is_same<Tmpl<E>, std::shared_ptr<E>>::value;
-		};
-
-		template<typename T>
-		struct is_unique_ptr : std::false_type {};
-
-		template<template<typename E> class Tmpl, typename E>
-		struct is_unique_ptr<Tmpl<E>>
-		{
-			using element_type = E;
-			static constexpr bool value = std::is_same<Tmpl<E>, std::unique_ptr<E, std::default_delete<E>>>::value;
-		};
-
-		template<template<typename E, typename D> class Tmpl, typename E, typename D>
-		struct is_unique_ptr<Tmpl<E, D>>
-		{
-			using element_type = E;
-			static constexpr bool value = std::is_same<Tmpl<E, D>, std::unique_ptr<E, D>>::value;
-		};
-
-		template<typename T>
-		struct is_smart_ptr
-		{
-			static constexpr bool value = is_shared_ptr<T>::value || is_unique_ptr<T>::value;
-		};
-
-// 		template<template<typename E> class Tmpl, typename E>
-// 		struct is_smart_ptr<Tmpl<E>>
-// 		{
-// 			static constexpr bool value = is_shared_ptr::value || is_unique_ptr::value;
-// 		};
-// 
-// 		template<template<typename E, typename D = void> class Tmpl, typename E, typename D>
-// 		struct is_smart_ptr<Tmpl<E, D>>
-// 		{
-// 			using is_shared_ptr = typename std::is_same<Tmpl<E>, std::shared_ptr<E>>;
-// 			using is_unique_ptr = typename std::is_same<Tmpl<E>, std::unique_ptr<E>>;
-// 
-// 			static constexpr bool value = is_shared_ptr::value || is_unique_ptr::value;
-// 		};
+		using underlying = typename std::underlying_type<Enum>::type;
+		return static_cast<underlying>(rhs) >= static_cast<underlying>(Enum::MIN) &&
+			static_cast<underlying>(rhs) < static_cast<underlying>(Enum::MAX);
 	}
+
+	/**
+	 * 验证枚举值的合法性，需要枚举类型提供MIN和MAX边界，有效区间[MIN, MAX)
+	 */
+	template<typename Enum, typename IntType>
+	typename std::enable_if<std::is_enum<Enum>::value&& std::is_integral<IntType>::value, bool>::type
+		validateEnum(IntType rhs)
+	{
+		using underlying = typename std::underlying_type<Enum>::type;
+		return static_cast<underlying>(rhs) >= static_cast<underlying>(Enum::MIN) &&
+			static_cast<underlying>(rhs) < static_cast<underlying>(Enum::MAX);
+	}
+
+	/**
+	 * 用于检查类型是否是std::shared_ptr
+	 */
+	template<typename T>
+	struct is_shared_ptr : std::false_type {};
+
+	template<template<typename E> class Tmpl, typename E>
+	struct is_shared_ptr<Tmpl<E>>
+	{
+		using element_type = E;
+		static constexpr bool value = std::is_same<Tmpl<E>, std::shared_ptr<E>>::value;
+	};
+
+	/**
+	 * 用于检查类型是否是std::unique_ptr
+	 * 只能用于检测使用default_delete的unique_ptr
+	 */
+	template<typename T>
+	struct is_unique_ptr : std::false_type {};
+
+	template<template<typename E> class Tmpl, typename E>
+	struct is_unique_ptr<Tmpl<E>>
+	{
+		using element_type = E;
+		static constexpr bool value = std::is_same<Tmpl<E>, std::unique_ptr<E, std::default_delete<E>>>::value;
+	};
+
+	template<template<typename E, typename D> class Tmpl, typename E, typename D>
+	struct is_unique_ptr<Tmpl<E, D>>
+	{
+		using element_type = E;
+		static constexpr bool value = std::is_same<Tmpl<E, D>, std::unique_ptr<E, D>>::value;
+	};
+
+	/**
+	 * 用于检查类型是否是std::shared_ptr或std::unique_ptr
+	 * 只能用于检测使用default_delete的unique_ptr
+	 */
+	template<typename T>
+	struct is_smart_ptr
+	{
+		static constexpr bool value = is_shared_ptr<T>::value || is_unique_ptr<T>::value;
+	};
+
+#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+	bool createPidfile(const char* pidfile);
+#endif
 }
 
 #endif

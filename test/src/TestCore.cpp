@@ -4,7 +4,6 @@
 #include "ws/core/ByteArray.h"
 #include "ws/core/Utils.h"
 #include "ws/core/Math.h"
-#include "ws/core/Log.h"
 #include "ws/core/AStar.h"
 #include "ws/core/TimeTool.h"
 
@@ -155,22 +154,6 @@ bool testMath()
 
 
 	std::cout << std::endl;
-	return true;
-}
-
-bool testLog()
-{
-	std::cout << "====================Test Log====================" << std::endl;
-	Log::level = LogLevel::_DEBUG_;
-
-	Log::v("verbost log...");
-	Log::d("debug log with fmt string: %s", "variable");
-	Log::e("error1 log..");
-
-	Log::level = LogLevel::_WARN_;
-
-	Log::d("do not print debug log");
-	Log::e("error2 log..");
 	return true;
 }
 

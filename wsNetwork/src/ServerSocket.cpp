@@ -1,8 +1,8 @@
-#include "ws/network/ServerSocket.h"
-#include "ws/core/Log.h"
-#include "ws/core/TimeTool.h"
 #include <errno.h>
 #include <string.h>
+#include <spdlog/spdlog.h>
+#include "ws/network/ServerSocket.h"
+#include "ws/core/TimeTool.h"
 
 using namespace ws::network;
 
@@ -67,7 +67,7 @@ int ServerSocket::processEventThread()
 				{
 					client->isClosing = true;
 					if (error != ERROR_NETNAME_DELETED)
-						Log::e("GetQueuedCompletionStatus Error: %d", error);
+						spdlog::error("GetQueuedCompletionStatus Error: {}", error);
 				}
 				releaseOverlappedData(ioData);
 			}
@@ -125,7 +125,7 @@ int ServerSocket::processEventThread()
 			{
 				client->isClosing = true;
 				releaseOverlappedData(ioData);
-				Log::e("send error! %d", WSAGetLastError());
+				spdlog::error("send error! {}", WSAGetLastError());
 			}
 			else
 			{
@@ -152,13 +152,13 @@ bool ServerSocket::initWinsock()
 
 	if (0 != err)
 	{
-		Log::e("Request Windows Socket Library Error!");
+		spdlog::error("Request Windows Socket Library Error!");
 		return false;
 	}
 	if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)
 	{
 		WSACleanup();
-		Log::e("Request Windows Socket Version 2.2 Error!");
+		spdlog::error("Request Windows Socket Version 2.2 Error!");
 		return false;
 	}
 	return true;
@@ -174,7 +174,7 @@ bool ServerSocket::startListen()
 	completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 	if (NULL == completionPort)
 	{
-		Log::e("CreateIoCompletionPort failed. Error: %d", GetLastError());
+		spdlog::error("CreateIoCompletionPort failed. Error: {}", GetLastError());
 		return false;
 	}
 
@@ -207,7 +207,7 @@ bool ServerSocket::startListen()
 	int result = bind(listenSocket, (SOCKADDR*)&srvAddr, sizeof(SOCKADDR));
 	if (SOCKET_ERROR == result)
 	{
-		Log::e("Bind failed. Error: %d", GetLastError());
+		spdlog::error("Bind failed. Error: {}", GetLastError());
 		return false;
 	}
 
@@ -215,10 +215,10 @@ bool ServerSocket::startListen()
 	result = listen(listenSocket, NUM_ACCEPTEX);
 	if (SOCKET_ERROR == result)
 	{
-		Log::e("Listen failed. Error: %d", GetLastError());
+		spdlog::error("Listen failed. Error: {}", GetLastError());
 		return false;
 	}
-	Log::i("server is listening port %d, waiting for clients...", config.listenPort);
+	spdlog::info("server is listening port {}, waiting for clients...", config.listenPort);
 
 	//AcceptEx function pointer
 	lpfnAcceptEx = NULL;
@@ -231,7 +231,7 @@ bool ServerSocket::startListen()
 		&dwBytes, NULL, NULL);
 	if (result != 0)
 	{
-		Log::e("WSAIoctl get AcceptEx function pointer failed... %d", WSAGetLastError());
+		spdlog::error("WSAIoctl get AcceptEx function pointer failed... {}", WSAGetLastError());
 		return false;
 	}
 
@@ -254,7 +254,7 @@ void ServerSocket::cleanup()
 	for (auto &th : eventThreads)
 	{
 		th->join();
-		Log::d("server socket event thread joined");
+		spdlog::debug("server socket event thread joined");
 	}
 	eventThreads.clear();
 	// disconnect all clients
@@ -344,7 +344,7 @@ int ServerSocket::postAcceptEx()
 								ADDRESS_LENGTH, ADDRESS_LENGTH, &dwBytes, &(ioData.overlapped));
 	if (result == FALSE && WSAGetLastError() != ERROR_IO_PENDING)
 	{
-		Log::e("lpfnAcceptEx error.. %d", WSAGetLastError());
+		spdlog::error("lpfnAcceptEx error.. {}", WSAGetLastError());
 		return -1;
 	}
 	return 0;
@@ -428,7 +428,7 @@ int ServerSocket::processEventThread()
 			{
 				continue;
 			}
-			Log::e("epoll wait error=%s", strerror(errno));
+			spdlog::error("epoll wait error={}", strerror(errno));
 			return -1;
 		}
 		for (int i = 0; i < eventCount; ++i)
@@ -449,7 +449,7 @@ int ServerSocket::processEventThread()
 						{
 							if (errno != EAGAIN && errno != EWOULDBLOCK)
 							{
-								Log::e("accept error: %s", strerror(errno));
+								spdlog::error("accept error: {}", strerror(errno));
 							}
 							break;
 						}
@@ -488,7 +488,7 @@ bool ServerSocket::startListen()
 	listenSocket = socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 	if (listenSocket < 0)
 	{
-		Log::e("create listen socket error.");
+		spdlog::error("create listen socket error.");
 		return false;
 	}
 
@@ -501,23 +501,23 @@ bool ServerSocket::startListen()
 	int optval = 1;
 	if(setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int))!=0)
 	{
-		Log::e("setsockopt error. errno=%d", errno);
+		spdlog::error("setsockopt error. errno={}", errno);
 		return false;
 	}
 
 	int result = bind(listenSocket, (sockaddr*)&srvAddr, sizeof(srvAddr));
 	if (result < 0)
 	{
-		Log::e("bind port %d error. errno=%d", config.listenPort, errno);
+		spdlog::error("bind port {} error. errno={}", config.listenPort, errno);
 		return false;
 	}
 	result = listen(listenSocket, 100);
 	if (result < 0)
 	{
-		Log::e("listen port %d error.", config.listenPort);
+		spdlog::error("listen port {} error.", config.listenPort);
 		return false;
 	}
-	Log::i("server is listening port %d, waiting for clients...", config.listenPort);
+	spdlog::info("server is listening port {}, waiting for clients...", config.listenPort);
 
 	epfd = epoll_create(EPOLL_SIZE);
 	if (epfd < 0)
@@ -531,7 +531,7 @@ bool ServerSocket::startListen()
 
 	if (-1 == pipe(pipe_fd))
 	{
-		Log::e("create pipe error: %s", strerror(errno));
+		spdlog::error("create pipe error: {}", strerror(errno));
 		return false;
 	}
 	ev.data.fd = pipe_fd[0];
@@ -551,7 +551,7 @@ void ServerSocket::cleanup()
 	const char exitCode[] = "0";
 	write(pipe_fd[1], exitCode, sizeof(exitCode));
 	eventThread->join();
-	Log::d("server socket event thread joined");
+	spdlog::debug("server socket event thread joined");
 	eventThread.reset();
 	close(pipe_fd[0]);
 	close(pipe_fd[1]);
@@ -676,7 +676,7 @@ int ServerSocket::processEventThread()
         int eventCount = kevent(kqfd, nullptr, 0, events, KEVENT_SIZE, nullptr);
         if (eventCount == -1)
         {
-            Log::e("kqueue wait error=%s", strerror(errno));
+            spdlog::error("kqueue wait error={}", strerror(errno));
             return -1;
         }
         for (int i = 0; i < eventCount; ++i)
@@ -687,7 +687,7 @@ int ServerSocket::processEventThread()
             case EVFILT_EXCEPT:
             {
                 // handle errors
-                Log::e("socket exception");
+                spdlog::error("socket exception");
                 Client* client = (Client*)evt.udata;
                 client->isClosing = true;
                 break;
@@ -703,7 +703,7 @@ int ServerSocket::processEventThread()
                         {
                             if (errno != EAGAIN && errno != EWOULDBLOCK)
                             {
-                                Log::e("accept error: %s", strerror(errno));
+                                spdlog::error("accept error: {}", strerror(errno));
                             }
                             break;
                         }
@@ -716,7 +716,7 @@ int ServerSocket::processEventThread()
                             EV_SET(&ev_set[2], acceptedSocket, EVFILT_EXCEPT, EV_ADD|EV_ENABLE, 0, 0, client);
                             if (kevent(kqfd, ev_set, 3, nullptr, 0, nullptr) < 0)
                             {
-                                Log::e("kevent add client error.");
+                                spdlog::error("kevent add client error.");
                             }
                         }
                         else
@@ -744,7 +744,7 @@ bool ServerSocket::startListen()
     listenSocket = socket(PF_INET, SOCK_STREAM, 0);
     if (listenSocket < 0)
     {
-        Log::e("create listen socket error.");
+        spdlog::error("create listen socket error.");
         return false;
     }
     
@@ -757,28 +757,28 @@ bool ServerSocket::startListen()
     int optval = 1;
     if(setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int))!=0)
     {
-        Log::e("setsockopt error. errno=%d", errno);
+        spdlog::error("setsockopt error. errno={}", errno);
         return false;
     }
     if (!setNonBlock(listenSocket))
     {
-        Log::e("set nonblock error.");
+        spdlog::error("set nonblock error.");
         return false;
     }
     
     int result = bind(listenSocket, (sockaddr*)&srvAddr, sizeof(srvAddr));
     if (result < 0)
     {
-        Log::e("bind port %d error. errno=%d", config.listenPort, errno);
+        spdlog::error("bind port {} error. errno={}", config.listenPort, errno);
         return false;
     }
     result = listen(listenSocket, 100);
     if (result < 0)
     {
-        Log::e("listen port %d error.", config.listenPort);
+        spdlog::error("listen port {} error.", config.listenPort);
         return false;
     }
-    Log::i("server is listening port %d, waiting for clients...", config.listenPort);
+    spdlog::info("server is listening port {}, waiting for clients...", config.listenPort);
     kqfd = kqueue();
     if (kqfd < 0)
     {
@@ -788,18 +788,18 @@ bool ServerSocket::startListen()
     EV_SET(&evt, listenSocket, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, (void*)(intptr_t)listenSocket);
     if (kevent(kqfd, &evt, 1, nullptr, 0, nullptr) < 0)
     {
-        Log::e("kevent add listen socket error.");
+        spdlog::error("kevent add listen socket error.");
         return false;
     }
     if (-1 == pipe(pipe_fd))
     {
-        Log::e("create pipe error: %s", strerror(errno));
+        spdlog::error("create pipe error: {}", strerror(errno));
         return false;
     }
     EV_SET(&evt, pipe_fd[0], EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, nullptr);
     if (kevent(kqfd, &evt, 1, nullptr, 0, nullptr) < 0)
     {
-        Log::e("kevent add pipe error.");
+        spdlog::error("kevent add pipe error.");
         return false;
     }
     
@@ -817,7 +817,7 @@ void ServerSocket::cleanup()
     const char exitCode[] = "0";
     write(pipe_fd[1], exitCode, sizeof(exitCode));
     eventThread->join();
-    Log::d("server socket event thread joined");
+    spdlog::debug("server socket event thread joined");
 	eventThread.reset();
     close(pipe_fd[0]);
     close(pipe_fd[1]);
@@ -850,7 +850,7 @@ void ServerSocket::readIntoBuffer(Client& client, uint32_t numBytes)
 	client.readerMtx.unlock();
     if (length != numBytes)
     {
-        Log::e("recv data error!");
+        spdlog::error("recv data error!");
     }
     client.hasNewData = true;
 }
@@ -887,7 +887,7 @@ void ServerSocket::writeFromBuffer(Client& client, uint32_t limitLength)
     ssize_t length = send(client.socket, bytes.readerPointer(), available, 0);
     if (length < 0 || length != limitLength)
     {
-        Log::e("send data error!");
+        spdlog::error("send data error!");
     }
     bytes.cutHead(available);
     if (!bytes.readAvailable())
@@ -903,13 +903,13 @@ bool ServerSocket::setNonBlock(int sockfd)
     int flags = fcntl(sockfd, F_GETFL, 0);
     if (flags < 0)
     {
-        Log::d("fcntl get failed");
+        spdlog::debug("fcntl get failed");
         return false;
     }
     int r = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
     if (r < 0)
     {
-        Log::d("fcntl set failed");
+        spdlog::debug("fcntl set failed");
         return false;
     }
     return true;
@@ -935,7 +935,7 @@ bool ServerSocket::init(const ServerConfig& cfg)
 {
 	if (!cfg.createClient)
 	{
-		Log::e("interface createClient must be implement!");
+		spdlog::error("interface createClient must be implement!");
 		return false;
 	}
 	config = cfg;
@@ -964,7 +964,8 @@ void ServerSocket::update()
 		addingClients.clear();
 	}
 	uint64_t now = TimeTool::getTickCount();
-	for (auto iter = allClients.begin(); iter != allClients.end();)
+	auto iter = allClients.begin();
+	while (iter != allClients.end())
 	{
 		auto &client = iter->second;
 		if (client->hasNewData)
@@ -972,10 +973,6 @@ void ServerSocket::update()
 			client->hasNewData = false;
 			client->lastActiveTime = now;
 			client->onRecv();
-		}
-		else if (now < client->lastActiveTime)	// GetTickCount was reset after 49.7 days
-		{
-			client->lastActiveTime = now;
 		}
 		else if (config.kickTime && now - client->lastActiveTime > config.kickTime)
 		{

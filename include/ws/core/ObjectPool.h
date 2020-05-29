@@ -4,7 +4,7 @@
 #include <list>
 #include <mutex>
 #include <memory>
-#include "Log.h"
+#include <spdlog/spdlog.h>
 
 namespace ws
 {
@@ -45,7 +45,7 @@ namespace ws
 				}
 				else
 				{
-					Log::w("object pool is full");
+					spdlog::warn("object pool is full");
 				}
 			}
 
@@ -57,7 +57,7 @@ namespace ws
 				}
 				else
 				{
-					Log::w("object pool is full");
+					spdlog::warn("object pool is full");
 				}
 			}
 

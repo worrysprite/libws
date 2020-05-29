@@ -12,9 +12,6 @@
     <ClCompile Include="src\ByteArray.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Log.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\Math.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -30,12 +27,12 @@
     <ClCompile Include="src\AStar.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Utils.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\ws\core\ByteArray.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ws\core\Log.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\ws\core\Math.h">

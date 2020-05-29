@@ -1,7 +1,7 @@
 #include "ws/core/AStar.h"
-#include "ws/core/Log.h"
 #include <memory>
 #include <cstring>
+#include <spdlog/spdlog.h>
 #ifdef _DEBUG_ASTAR
 #include <iostream>
 #include <thread>
@@ -48,7 +48,7 @@ namespace ws
 			auto end = getNode(endX, endY, map.getWidth());
 			if (!start || !end)
 			{
-				Log::e("%s invalid arguments!", __FUNCTION__);
+				spdlog::error("%s invalid arguments!", __FUNCTION__);
 				return false;		//参数错误无法寻路
 			}
 #ifdef _DEBUG_ASTAR

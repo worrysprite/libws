@@ -1,7 +1,7 @@
 #include <functional>
 #include <mutex>
+#include <spdlog/spdlog.h>
 #include "ws/network/ClientSocket.h"
-#include "ws/core/Log.h"
 #include "ws/core/TimeTool.h"
 
 using namespace ws::network;
@@ -18,13 +18,13 @@ bool ClientSocket::initWinsock()
 
 	if (0 != err)
 	{
-		Log::e("Request Windows Socket Library Error!");
+		spdlog::error("Request Windows Socket Library Error!");
 		return false;
 	}
 	if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)
 	{
 		WSACleanup();
-		Log::e("Request Windows Socket Version 2.2 Error!");
+		spdlog::error("Request Windows Socket Version 2.2 Error!");
 		return false;
 	}
 	return true;
@@ -149,7 +149,7 @@ void ClientSocket::connect(const std::string& ip, uint16_t port)
 {
 	if (!onReceived)
 	{
-		Log::e("must implements onReceived!");
+		spdlog::error("must implements onReceived!");
 		return;
 	}
 	if (!sockfd)
@@ -171,10 +171,10 @@ void ClientSocket::connect(const std::string& ip, uint16_t port)
 		status = lastStatus = SocketStatus::CONNECTING;
 		break;
 	case SocketStatus::CONNECTING:
-		Log::d("socket is connecting, please wait...");
+		spdlog::debug("socket is connecting, please wait...");
 		break;
 	case SocketStatus::CONNECTED:
-		Log::d("socket is connected. you must disconnect before connect again.");
+		spdlog::debug("socket is connected. you must disconnect before connect again.");
 		break;
 	}
 }

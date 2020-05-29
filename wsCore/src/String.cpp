@@ -1,302 +1,226 @@
+#include <openssl/md5.h>
+#include <ctype.h>
+#include <sstream>
+#include <vector>
 #include "ws/core/String.h"
 #include "ws/core/Math.h"
-#include <string.h>
-#include <ctype.h>
-#include <time.h>
 
-namespace ws
+namespace ws::core::String
 {
-	namespace core
+	bool copy(char* dest, size_t size, const std::string& src, bool asString)
 	{
-		void String::split(char* str, const char* seperator, std::vector<char*>& output)
+		size_t srcLen = src.length();
+		if (!srcLen)
+			return true;
+
+		if (!size)
+			return false;
+
+		if (asString)
 		{
-			size_t strLen = strlen(str);
-			if (!strLen)
-			{
-				return;
-			}
-			size_t sepLength = strlen(seperator);
-			output.push_back(str);
-			while (*str != '\0' && strLen >= sepLength)
-			{
-				if (strncmp(str, seperator, sepLength) == 0)
-				{
-					*str = '\0';
-					str += sepLength;
-					strLen -= sepLength;
-					output.push_back(str);
-				}
-				else
-				{
-					++str;
-					--strLen;
-				}
-			}
+			size = size - 1;
 		}
-
-		void String::split(const char* str, const char* seperator, std::vector<std::string>& output)
+		if (size >= srcLen)	//enough
 		{
-			size_t strLen = strlen(str);
-			if (!strLen)
+			memcpy(dest, src.c_str(), srcLen);
+			if (asString)
 			{
-				return;
-			}
-			size_t sepLength = strlen(seperator);
-			const char* ptr = str;
-			while (*str != '\0' && strLen >= sepLength)
-			{
-				if (strncmp(str, seperator, sepLength) == 0)
-				{
-					output.push_back(std::string(ptr, str - ptr));
-					str += sepLength;
-					ptr = str;
-					strLen -= sepLength;
-				}
-				else
-				{
-					++str;
-					--strLen;
-				}
-			}
-			output.push_back(std::string(ptr));
-		}
-
-		void String::join(const std::vector<std::string>& input, std::string& output, const char* glue /*= nullptr*/)
-		{
-			if (input.empty())
-			{
-				output.clear();
-				return;
-			}
-			auto iter = input.begin();
-			output = *iter++;
-			while (iter != input.end())
-			{
-				output += glue;
-				output += *iter++;
-			}
-		}
-
-		bool String::copy(char* dest, uint32_t size, const std::string& src)
-		{
-			uint32_t srcLen = (uint32_t)src.length();
-			if (!srcLen)
-				return true;
-
-			if (size > srcLen)	//dest size enough
-			{
-				memcpy(dest, src.c_str(), srcLen);
 				dest[srcLen] = '\0';
-				return true;
-			}
-			else
-			{
-				memcpy(dest, src.c_str(), size - 1);
-				dest[size - 1] = '\0';
-				return false;
-			}
-		}
-
-		void String::toLowercase(char* str)
-		{
-			while (*str != '\0')
-			{
-				*str = tolower(*str);
-				++str;
-			}
-		}
-
-		void String::toUppercase(char* str)
-		{
-			while (*str != '\0')
-			{
-				*str = toupper(*str);
-				++str;
-			}
-		}
-
-		bool String::isPrintableString(const char* str)
-		{
-			while (*str != '\0')
-			{
-				if (*str < ' ' || *str > '~')
-				{
-					return false;
-				}
-				++str;
 			}
 			return true;
 		}
-
-		time_t String::formatTime(const std::string& time)
+		else
 		{
-			std::vector<std::string> tmp;
-			split(time.c_str(), " ", tmp);
-			std::vector<std::string> dates, times;
-			split(tmp[0].c_str(), "/", dates);
-			if (dates.size() != 3)
+			memcpy(dest, src.c_str(), size);
+			if (asString)
 			{
-				return 0;
+				dest[size] = '\0';
 			}
-			if (tmp.size() > 1)
-			{
-				split(tmp[1].c_str(), ":", times);
-				if (times.size() != 3)
-				{
-					return 0;
-				}
-			}
-			tm result = {0};
-			result.tm_year = atoi(dates[0].c_str()) - 1900;
-			result.tm_mon = atoi(dates[1].c_str()) - 1;
-			result.tm_mday = atoi(dates[2].c_str());
-			if (!times.empty())
-			{
-				result.tm_hour = atoi(times[0].c_str());
-				result.tm_min = atoi(times[1].c_str());
-				result.tm_sec = atoi(times[2].c_str());
-			}
-			return mktime(&result);
+			return false;
 		}
+	}
 
-		std::string String::formatTime(time_t time)
+	void toLowercase(char* str)
+	{
+		while (*str != '\0')
 		{
-			if (!time)
+			*str = tolower(*str);
+			++str;
+		}
+	}
+
+	void toUppercase(char* str)
+	{
+		while (*str != '\0')
+		{
+			*str = toupper(*str);
+			++str;
+		}
+	}
+
+	bool isPrintableString(const char* str)
+	{
+		while (*str != '\0')
+		{
+			if (!isprint(*str))
 			{
-				time = ::time(nullptr);
+				return false;
 			}
-			char buff[30] = {0};
-			tm date = {0};
+			++str;
+		}
+		return true;
+	}
+
+	time_t formatTime(const char* time)
+	{
+		std::vector<std::string> tmp, dates, times;
+		split(time, " ", tmp);
+
+		if (tmp[0].find('/') != std::string::npos)
+		{
+			split(tmp[0].c_str(), "/", dates);
+		}
+		else if (tmp[0].find('-') != std::string::npos)
+		{
+			split(tmp[0].c_str(), "-", dates);
+		}
+		if (dates.size() != 3)
+		{
+			return 0;	//invalid format
+		}
+		if (tmp.size() > 1)
+		{
+			split(tmp[1].c_str(), ":", times);
+			if (times.size() != 3)
+			{
+				return 0;	//invalid format
+			}
+		}
+		tm result = { 0 };
+		result.tm_year = atoi(dates[0].c_str()) - 1900;
+		result.tm_mon = atoi(dates[1].c_str()) - 1;
+		result.tm_mday = atoi(dates[2].c_str());
+		if (!times.empty())
+		{
+			result.tm_hour = atoi(times[0].c_str());
+			result.tm_min = atoi(times[1].c_str());
+			result.tm_sec = atoi(times[2].c_str());
+		}
+		return mktime(&result);
+	}
+
+	std::string formatTime(time_t time, const char* format)
+	{
+		tm date = { 0 };
 #ifdef _WIN32
-			localtime_s(&date, &time);
+		localtime_s(&date, &time);
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__) || \
 defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
-			localtime_r(&time, &date);
+		localtime_r(&time, &date);
 #endif
-			strftime(buff, 30, "%Y/%m/%d %H:%M:%S", &date);
-			return std::string(buff);
-		}
+		char buff[30] = { 0 };
+		strftime(buff, sizeof(buff), format, &date);
+		return std::string(buff);
+	}
 
-// 		std::string String::md5(const std::string input)
-// 		{
-// 			std::string result;
-// 			if (input.empty())
-// 			{
-// 				return result;
-// 			}
-// 			const int digestLen = 16;
-// 			unsigned char digest[digestLen] = { 0 };
-// 			memset(digest, 0x00, sizeof(digest));
-// 
-// 			MD5_CTX ctx;
-// 			MD5_Init(&ctx);
-// 			MD5_Update(&ctx, input.c_str(), input.size());
-// 			MD5_Final(digest, &ctx);
-// 
-// 			result.clear();
-// 			result.append((char *)digest, digestLen);
-// 			return Bin2Hex(result);
-// 		}
-
-		// 二进制字符串转十六进制字符串(只用于String::md5)
-		std::string String::Bin2Hex(std::string input)
+	std::string md5(const void* input, size_t length)
+	{
+		if (!length)
 		{
-			std::string result;
-			const char hexdig[] = "0123456789ABCDEF";
+			return std::string();
+		}
+		unsigned char digest[MD5_DIGEST_LENGTH] = { 0 };
+		MD5(static_cast<const unsigned char*>(input), length, digest);
+		return bin2Hex(static_cast<const uint8_t*>(digest), MD5_DIGEST_LENGTH);
+	}
 
-			if (input.empty())
-			{
-				return result;
-			}
-
-			result.clear();
-			for (std::string::iterator i = input.begin(); i != input.end(); i++)
-			{
-				result.append(1, hexdig[(*i >> 4) & 0xf]);  //留下高四位
-				result.append(1, hexdig[(*i & 0xf)]);  //留下低四位
-			}
-
+	static const char HEX_DIGIT[] = "0123456789ABCDEF";
+	
+	std::string bin2Hex(const uint8_t* input, size_t length)
+	{
+		std::string result;
+		if (!length)
+		{
 			return result;
 		}
 
-		// 只用于String::URLEncode
-		char String::Char2Hex(const char& input)
+		result.reserve(length * 2);
+		for (size_t i = 0; i < length; ++i)
 		{
-			return input > 9 ? input - 10 + 'A' : input + '0';
+			result += HEX_DIGIT[input[i] >> 4];
+			result += HEX_DIGIT[input[i] & 0x0F];
 		}
+		return result;
+	}
 
-		// 只用于String::URLDecode
-		char String::Hex2Char(const char& input)
-		{
-			return isdigit(input) ? input - '0' : input - 'A' + 10;
-		}
-
-		std::string String::URLEncode(const std::string& input)
-		{
-			std::string result;
-			for (size_t ix = 0; ix < input.size(); ix++)
-			{
-				char buf[4];
-				memset(buf, 0, 4);
-				if (isalnum((char)input[ix]))
-				{
-					buf[0] = input[ix];
-				}
-				else
-				{
-					buf[0] = '%';
-					buf[1] = String::Char2Hex((char)input[ix] >> 4);
-					buf[2] = String::Char2Hex((char)input[ix] % 16);
-				}
-				result += (char *)buf;
-			}
+	std::string URLEncode(const char* input, size_t length)
+	{
+		std::string result;
+		if (!length)
 			return result;
-		}
 
-		std::string String::URLDecode(const std::string& input)
+		result.reserve(length * 3);
+		for (size_t i = 0; i < length; ++i)
 		{
-			std::string result;
-			for (size_t ix = 0; ix < input.size(); ix++)
+			auto c = input[i];
+			if (isalnum(c) || c == '-' || c == '_' || c =='.' || c == '~')
 			{
-				char ch = 0;
-				if (input[ix] == '%')
-				{
-					ch = (String::Hex2Char(input[ix + 1]) << 4);
-					ch |= String::Hex2Char(input[ix + 2]);
-					ix += 2;
-				}
-				else if (input[ix] == '+')
-				{
-					ch = ' ';
-				}
-				else
-				{
-					ch = input[ix];
-				}
-				result += (char)ch;
+				result += c;
 			}
-			return result;
+			else
+			{
+				result += '%';
+				result += HEX_DIGIT[static_cast<uint8_t>(c) >> 4];
+				result += HEX_DIGIT[c & 0x0F];
+			}
 		}
+		return result;
+	}
 
-		const char rndChars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
-		std::string String::random(unsigned char length, const char* chars)
+	char hex2char(const char& input)
+	{
+		if (isdigit(input))
+			return input - '0';
+		if (iswxdigit(input))
+			return isupper(input) ? input - 'A' + 10 : input - 'a' + 10;
+		return 0;
+	}
+
+	std::string URLDecode(const char* input, size_t length)
+	{
+		std::string result;
+		for (size_t i = 0; i < length; i++)
 		{
-			if (!length)
+			if (input[i] == '%')
 			{
-				return std::string();
+				result += (hex2char(input[i + 1]) << 4) | hex2char(input[i + 2]);
+				i += 2;
 			}
-			if (!chars)
+			else
 			{
-				chars = rndChars;
+				result += input[i];
 			}
-			unsigned int maxLen = (unsigned int)strlen(chars);
-			std::string result;
-			while (result.length() < length)
-			{
-				unsigned int index = Math::random(maxLen);
-				result += chars[index];
-			}
-			return result;
 		}
+		return result;
+	}
+
+	std::string random(uint16_t length, const char* chars)
+	{
+		std::string result;
+		if (!length)
+			return result;
+
+		static const char rndChars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
+		if (!chars)
+		{
+			chars = rndChars;
+		}
+		result.resize(length);
+		uint32_t maxLen = (uint32_t)strlen(chars);
+		for (uint16_t i = 0; i < length; ++i)
+		{
+			result[i] = chars[Math::random(maxLen)];
+		}
+		return result;
 	}
 }

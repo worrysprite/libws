@@ -9,8 +9,8 @@
 #include <vector>
 #include <thread>
 #include <memory>
+#include <spdlog/spdlog.h>
 #include "ws/core/ByteArray.h"
-#include "ws/core/Log.h"
 
 using namespace ws::core;
 
@@ -68,7 +68,7 @@ namespace ws
 				}
 				else
 				{
-					Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+					spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
 				}
 				return *this;
 			}
@@ -117,7 +117,7 @@ namespace ws
 				}
 				else
 				{
-					Log::e("mysql get result out of range! sql=%s", _sql.c_str());
+					spdlog::error("mysql get result out of range! sql={}", _sql.c_str());
 				}
 				return *this;
 			}
@@ -170,7 +170,7 @@ namespace ws
 				}
 				else
 				{
-					Log::e("mysql bind params out of range! sql=%s", _sql.c_str());
+					spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
 				}
 				return *this;
 			}
@@ -224,7 +224,7 @@ namespace ws
 				}
 				else
 				{
-					Log::e("mysql fetch field out of range!, sql: %s", sql.c_str());
+					spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
 				}
 				return *this;
 			}

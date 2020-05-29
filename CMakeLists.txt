@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED 17)
 set(CMAKE_CXX_STANDARD 17)
 
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
+if (MSVC)
+INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/spdlog/include")
+add_compile_options("/std:c++17" "/utf-8" "/MP" "$<$<CONFIG:RELEASE>:/O2>")
+else (CMAKE_COMPILER_IS_GNUCXX)
+add_compile_options("-std=c++17" "-Wall" "$<$<CONFIG:DEBUG>:-g>" "$<$<CONFIG:RELEASE>:-O2>")
+endif (MSVC)
 
 #设置输出目录 库
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build/bin)
