@@ -132,7 +132,7 @@ namespace ws::core::String
 	/**
 	 * 将当前时间转化为字符串，格式为yyyy-mm-dd hh:mm:ss
 	 */
-	std::string formatTime()
+	inline std::string formatTime()
 	{
 		return formatTime(::time(nullptr), "%F %T");
 	}
