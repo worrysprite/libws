@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <thread>
 #include <mutex>
+#include <functional>
 
 #include "ws/network/NetDef.h"
 #include "ws/core/ByteArray.h"
