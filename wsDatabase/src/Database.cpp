@@ -580,27 +580,32 @@ void Database::freeStatement(const std::string& sql)
 //===================== DBRequestQueue Implements ========================
 DBQueue::~DBQueue()
 {
-	while (workQueueLength > 0)
+	while (size_t queueLength = getQueueLength())
 	{
-		spdlog::debug("DBQueue waiting for db requests complete, remaining: {}", workQueueLength);
+		spdlog::debug("DBQueue waiting for db requests complete, remaining: {}", queueLength);
+		update();
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
-	this->isExit = true;
 	for (auto &th : workerThreads)
 	{
-		th->join();
+		th->isExit = true;
+		th->thread->join();
 		spdlog::debug("DBQueue worker thread joined.");
 	}
+	//finishQueue maybe not empty after workers joined.
+	update();
 }
 
-void DBQueue::setThread(uint32_t numThread)
+void DBQueue::setThread(size_t numThread)
 {
 	if (workerThreads.size() < numThread)
 	{
 		//add more threads
-		for (uint32_t i = (uint32_t)workerThreads.size(); i < numThread; i++)
+		for (size_t i = workerThreads.size(); i < numThread; i++)
 		{
-			workerThreads.push_back(std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this)));
+			auto worker = std::make_shared<WorkerThread>();
+			worker->thread = std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this, std::placeholders::_1), worker);
+			workerThreads.push_back(worker);
 		}
 	}
 	else
@@ -608,7 +613,10 @@ void DBQueue::setThread(uint32_t numThread)
 		//remove threads
 		while (workerThreads.size() > numThread)
 		{
-			workerThreads.back()->detach();
+			auto &worker = workerThreads.back();
+			//worker->thread->detach();
+			worker->isExit = true;
+			worker->thread->join();
 			workerThreads.pop_back();
 		}
 	}
@@ -617,7 +625,7 @@ void DBQueue::setThread(uint32_t numThread)
 void DBQueue::addRequest(DBRequestPtr request)
 {
 	std::lock_guard<std::mutex> lock(workMtx);
-	workQueue.push_back(request);
+	workQueue.push(request);
 	workQueueLength = workQueue.size();
 }
 
@@ -625,48 +633,45 @@ void DBQueue::addRequest(DBRequestPtr request)
 void DBQueue::update()
 {
 	DBRequestList tmpQueue;
+	finishMtx.lock();
 	if (!finishQueue.empty())
 	{
-		std::lock_guard<std::mutex> lock(finishMtx);
 		tmpQueue.swap(finishQueue);
 	}
+	finishMtx.unlock();
+	
 	while (!tmpQueue.empty())
 	{
 		DBRequestPtr request = tmpQueue.front();
-		tmpQueue.pop_front();
+		tmpQueue.pop();
 		request->onFinish();
 	}
 }
 
 DBRequestPtr DBQueue::getRequest()
 {
-	DBRequestPtr request(nullptr);
+	DBRequestPtr request;
 	std::lock_guard<std::mutex> lock(workMtx);
 	if (!workQueue.empty())
 	{
 		request = workQueue.front();
-		workQueue.pop_front();
+		workQueue.pop();
 		workQueueLength = workQueue.size();
 	}
 	return request;
 }
 
-void DBQueue::finishRequest(DBRequestPtr request)
-{
-	std::lock_guard<std::mutex> lock(finishMtx);
-	finishQueue.push_back(request);
-}
-
-void DBQueue::DBWorkThread()
+void DBQueue::DBWorkThread(WorkerThreadPtr worker)
 {
 	Database db;
 	db.setDBConfig(config);
 	DBRequestPtr request;
 	const std::chrono::milliseconds requestWait(100);
 	const std::chrono::microseconds connectWait(500);
-	while (!this->isExit)
+	
+	while (!worker->isExit)
 	{
-		if (!request && !(request = getRequest()))
+		if (!(request = getRequest()))
 		{
 			std::this_thread::sleep_for(requestWait);
 			continue;
@@ -677,7 +682,7 @@ void DBQueue::DBWorkThread()
 			std::this_thread::sleep_for(connectWait);
 		}
 		request->onRequest(db);
-		finishRequest(request);
-		request.reset();
+		std::lock_guard<std::mutex> lock(finishMtx);
+		finishQueue.push(request);
 	}
 }

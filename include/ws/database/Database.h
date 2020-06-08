@@ -3,7 +3,8 @@
 
 #include <mysql.h>
 #include <string>
-#include <list>
+#include <queue>
+#include <deque>
 #include <unordered_map>
 #include <mutex>
 #include <vector>
@@ -322,32 +323,41 @@ namespace ws
 		class DBQueue
 		{
 		public:
-			DBQueue(const MYSQL_CONFIG& cfg) :isExit(false), config(cfg), workQueueLength(0) {}
+			DBQueue(const MYSQL_CONFIG& cfg) : config(cfg) {}
 			virtual ~DBQueue();
 
 			//设置数据库并发线程数
-			void				setThread(uint32_t numThread);
+			void				setThread(size_t numThread);
 			//添加一个数据库请求到队列
 			void				addRequest(DBRequestPtr request);
 			//业务线程通过update完成数据库请求，获取结果
 			void				update();
 			//获取队列长度
-			inline size_t		getQueueLength(){ return workQueueLength; }
+			inline size_t		getQueueLength()
+			{
+				std::lock_guard<std::mutex> lock(workMtx);
+				return workQueueLength;
+			}
 
 		private:
-			typedef std::list<DBRequestPtr> DBRequestList;
-			DBRequestPtr		getRequest();
-			void				finishRequest(DBRequestPtr request);
-			void				DBWorkThread();
+			struct WorkerThread
+			{
+				bool							isExit = false;
+				std::unique_ptr<std::thread>	thread;
+			};
+			using WorkerThreadPtr = std::shared_ptr<WorkerThread>;
 
-			bool						isExit;
+			using DBRequestList = std::queue<DBRequestPtr>;
+			DBRequestPtr		getRequest();
+			void				DBWorkThread(WorkerThreadPtr worker);
+
 			MYSQL_CONFIG				config;
 			std::mutex					workMtx;
 			DBRequestList				workQueue;
-			size_t						workQueueLength;
+			size_t						workQueueLength = 0;
 			std::mutex					finishMtx;
 			DBRequestList				finishQueue;
-			std::list<std::unique_ptr<std::thread>>	workerThreads;
+			std::deque<WorkerThreadPtr>	workerThreads;
 		};
 	}
 }

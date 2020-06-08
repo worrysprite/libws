@@ -15,6 +15,9 @@ extern bool testPidfile();
 
 int main()
 {
+#if _WIN32 && _DEBUG
+	system("chcp 65001");
+#endif
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 	assert(testPidfile());
 #endif
