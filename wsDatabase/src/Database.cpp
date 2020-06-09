@@ -7,8 +7,8 @@
 using namespace ws::database;
 
 //===================== Recordset Implements ========================
-Recordset::Recordset(MYSQL_RES* pMysqlRes, const std::string& sql) :
-	fieldIndex(0), mysqlRow(nullptr), mysqlRes(pMysqlRes), sql(sql)
+Recordset::Recordset(MYSQL_RES* res, const std::string& sql) :
+	fieldIndex(0), mysqlRow(nullptr), mysqlRes(res), sql(sql)
 {
 	numFields = mysql_num_fields(mysqlRes);
 }
@@ -16,48 +16,14 @@ Recordset::Recordset(MYSQL_RES* pMysqlRes, const std::string& sql) :
 Recordset::~Recordset()
 {
 	mysql_free_result(mysqlRes);
-	mysqlRes = NULL;
+	mysqlRes = nullptr;
 }
 
 bool Recordset::nextRow()
 {
 	fieldIndex = 0;
 	mysqlRow = mysql_fetch_row(mysqlRes);
-	return (mysqlRow != NULL);
-}
-
-Recordset& Recordset::operator>>(float& value)
-{
-	if (mysqlRow && fieldIndex < numFields)
-	{
-		const char* szRow = mysqlRow[fieldIndex++];
-		if (szRow)
-		{
-			value = strtof(szRow, NULL);
-		}
-	}
-	else
-	{
-		spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
-	}
-	return *this;
-}
-
-Recordset& Recordset::operator>>(double& value)
-{
-	if (mysqlRow && fieldIndex < numFields)
-	{
-		const char* szRow = mysqlRow[fieldIndex++];
-		if (szRow)
-		{
-			value = strtod(szRow, NULL);
-		}
-	}
-	else
-	{
-		spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
-	}
-	return *this;
+	return mysqlRow != nullptr;
 }
 
 Recordset& Recordset::operator>>(std::string& value)
@@ -125,30 +91,31 @@ void* Recordset::getBlob(unsigned long& datasize)
 
 //===================== MysqlStatement Implements ========================
 
-DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) : paramIndex(0),
-	_numParams(0), resultIndex(0), _numResultFields(0), _numRows(0), _lastInsertId(0),
-	_sql(sql), stmt(mysql_stmt), paramBind(nullptr), resultBind(nullptr),
-	resultMetadata(nullptr), paramsBuffer(nullptr)
+DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
+	_sql(sql), stmt(mysql_stmt)
 {
 	// bind params
-	_numParams = (int)mysql_stmt_param_count(stmt);
-	if (_numParams > 0)
+	auto numParams = mysql_stmt_param_count(stmt);
+	if (numParams)
 	{
-		paramBind = new MYSQL_BIND[_numParams];
-		memset(paramBind, 0, sizeof(MYSQL_BIND)* _numParams);
-		paramsBuffer = new void*[_numParams];
-		memset(paramsBuffer, 0, sizeof(void*)* _numParams);
+		paramBind.resize(numParams);
+		memset(paramBind.data(), 0, sizeof(MYSQL_BIND) * numParams);
+		for (int i = 0; i < numParams; ++i)
+		{
+			paramBind[i].length = &paramBind[i].buffer_length;
+		}
 	}
 
 	// bind result
-	resultMetadata = mysql_stmt_result_metadata(stmt);
+	auto resultMetadata = mysql_stmt_result_metadata(stmt);
 	if (resultMetadata)
 	{
-		_numResultFields = mysql_num_fields(resultMetadata);
-		resultBind = new MYSQL_BIND[_numResultFields];
-		memset(resultBind, 0, sizeof(MYSQL_BIND)* _numResultFields);
+		auto numResultFields = mysql_num_fields(resultMetadata);
+		resultBind.resize(numResultFields);
+		memset(resultBind.data(), 0, sizeof(MYSQL_BIND) * numResultFields);
+
 		MYSQL_FIELD* fields = mysql_fetch_fields(resultMetadata);
-		for (int i = 0; i < _numResultFields; ++i)
+		for (int i = 0; i < numResultFields; ++i)
 		{
 			resultBind[i].buffer_type = fields[i].type;
 			unsigned long buffer_length(0);
@@ -175,6 +142,7 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) : param
 			case MYSQL_TYPE_TIME:
 			case MYSQL_TYPE_DATE:
 			case MYSQL_TYPE_DATETIME:
+			case MYSQL_TYPE_TIMESTAMP:
 				buffer_length = sizeof(MYSQL_TIME);
 				break;
 			default:
@@ -184,44 +152,21 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) : param
 			resultBind[i].is_unsigned = (fields[i].flags & UNSIGNED_FLAG) > 0;
 			resultBind[i].buffer = malloc(buffer_length);
 			resultBind[i].buffer_length = buffer_length;
-			resultBind[i].is_null = new my_bool(0);
-			resultBind[i].length = new unsigned long(0);
 		}
-		if (mysql_stmt_bind_result(stmt, resultBind))
+		if (mysql_stmt_bind_result(stmt, resultBind.data()))
 		{
 			spdlog::error("mysql bind result failed: {}", mysql_stmt_error(stmt));
 		}
+		mysql_free_result(resultMetadata);
 	}
 }
 
 DBStatement::~DBStatement() 
 {
-	if (paramBind)
+	for (auto& bind : resultBind)
 	{
-		delete[] paramBind;
-		paramBind = nullptr;
+		free(bind.buffer);
 	}
-	if (paramsBuffer)
-	{
-		for (int i = 0; i < _numParams; ++i)
-		{
-			free(paramsBuffer[i]);
-		}
-		delete[] paramsBuffer;
-		paramsBuffer = nullptr;
-	}
-	if (resultBind)
-	{
-		for (int i = 0; i < _numResultFields; ++i)
-		{
-			free(resultBind[i].buffer);
-			delete resultBind[i].is_null;
-			delete resultBind[i].length;
-		}
-		delete[] resultBind;
-		resultBind = nullptr;
-	}
-	mysql_free_result(resultMetadata);
 	if (stmt)
 	{
 		mysql_stmt_close(stmt);
@@ -231,15 +176,19 @@ DBStatement::~DBStatement()
 
 DBStatement& DBStatement::operator<<(const std::string& value)
 {
-	if (paramIndex < _numParams)
+	if (paramIndex < numParams())
 	{
 		MYSQL_BIND& b = paramBind[paramIndex];
-		b.buffer_type = MYSQL_TYPE_VAR_STRING;
-		b.buffer = malloc(value.size());
-		memcpy(b.buffer, value.data(), value.size());
-		paramsBuffer[paramIndex] = b.buffer;
-		b.buffer_length = (unsigned long)value.size();
-		b.length = &b.buffer_length;
+		if (value.empty())
+		{
+			b.buffer_type = MYSQL_TYPE_NULL;
+		}
+		else
+		{
+			b.buffer_type = MYSQL_TYPE_STRING;
+			b.buffer = (void*)value.data();
+			b.buffer_length = (unsigned long)value.size();
+		}
 		++paramIndex;
 	}
 	else
@@ -249,14 +198,22 @@ DBStatement& DBStatement::operator<<(const std::string& value)
 	return *this;
 }
 
-DBStatement& DBStatement::bindString(const char* value, unsigned long length)
+DBStatement& DBStatement::bindString(const char* value, size_t length)
 {
-	if (paramIndex < _numParams)
+	if (paramIndex < numParams())
 	{
 		MYSQL_BIND& b = paramBind[paramIndex];
-		b.buffer_type = MYSQL_TYPE_VAR_STRING;
-		b.buffer = (void*)value;
-		b.buffer_length = length;
+		if (value && length)
+		{
+			b.buffer_type = MYSQL_TYPE_STRING;
+			auto& buffer = paramsBuffer.emplace_back(value, length);
+			b.buffer = buffer.data();
+			b.buffer_length = length;
+		}
+		else
+		{
+			b.buffer_type = MYSQL_TYPE_NULL;
+		}
 		++paramIndex;
 	}
 	else
@@ -268,14 +225,19 @@ DBStatement& DBStatement::bindString(const char* value, unsigned long length)
 
 DBStatement& DBStatement::operator<<(const ByteArray& value)
 {
-	if (paramIndex < _numParams)
+	if (paramIndex < numParams())
 	{
 		MYSQL_BIND& b = paramBind[paramIndex];
-		b.buffer_type = MYSQL_TYPE_BLOB;
-		b.buffer = malloc(value.size());
-		memcpy(b.buffer, value.data(), value.size());
-		paramsBuffer[paramIndex] = b.buffer;
-		b.buffer_length = (unsigned long)value.size();
+		if (value.size())
+		{
+			b.buffer_type = MYSQL_TYPE_BLOB;
+			b.buffer = (void*)value.data();
+			b.buffer_length = (unsigned long)value.size();
+		}
+		else
+		{
+			b.buffer_type = MYSQL_TYPE_NULL;
+		}
 		++paramIndex;
 	}
 	else
@@ -285,15 +247,16 @@ DBStatement& DBStatement::operator<<(const ByteArray& value)
 	return *this;
 }
 
-void DBStatement::bindBlob(enum_field_types type, void* data, unsigned long size)
+void DBStatement::bindBlob(void* data, unsigned long size)
 {
-	if (paramIndex < _numParams)
+	if (paramIndex < numParams())
 	{
 		MYSQL_BIND& b = paramBind[paramIndex];
 		if (data)
 		{
-			b.buffer_type = type;
-			b.buffer = data;
+			auto& buffer = paramsBuffer.emplace_back((const char*)data, size);
+			b.buffer_type = MYSQL_TYPE_BLOB;
+			b.buffer = buffer.data();
 			b.buffer_length = size;
 		}
 		else
@@ -312,9 +275,9 @@ bool DBStatement::execute()
 {
 	_numRows = 0;
 	_lastInsertId = 0;
-	if (_numParams > 0)
+	if (!paramBind.empty())
 	{
-		if (mysql_stmt_bind_param(stmt, paramBind))
+		if (mysql_stmt_bind_param(stmt, paramBind.data()))
 		{
 			spdlog::error("mysql bind params error");
 			return false;
@@ -325,7 +288,7 @@ bool DBStatement::execute()
 		spdlog::error("mysql execute failed: {}, sql={}", mysql_stmt_error(stmt), _sql.c_str());
 		return false;
 	}
-	if (resultMetadata)
+	if (!resultBind.empty())
 	{
 		if (mysql_stmt_store_result(stmt))
 		{
@@ -357,19 +320,14 @@ bool DBStatement::nextRow()
 	}
 }
 
-void DBStatement::reset()
+void DBStatement::clear()
 {
-	memset(paramBind, 0, sizeof(MYSQL_BIND)* _numParams);
-	for (int i = 0; i < _numParams; ++i)
+	memset(paramBind.data(), 0, sizeof(MYSQL_BIND) * paramBind.size());
+	paramsBuffer.clear();
+
+	for (auto &bind : resultBind)
 	{
-		free(paramsBuffer[i]);
-		paramsBuffer[i] = nullptr;
-	}
-	for (int i = 0; i < _numResultFields; ++i)
-	{
-		memset(resultBind[i].buffer, 0, resultBind[i].buffer_length);
-		*resultBind[i].is_null = 0;
-		*resultBind[i].length = 0;
+		memset(bind.buffer, 0, bind.buffer_length);
 	}
 	paramIndex = 0;
 	resultIndex = 0;
@@ -377,7 +335,7 @@ void DBStatement::reset()
 
 DBStatement& DBStatement::operator>>(std::string& value)
 {
-	if (resultIndex < _numResultFields)
+	if (resultIndex < numResultFields())
 	{
 		if (*resultBind[resultIndex].is_null)
 		{
@@ -398,9 +356,8 @@ DBStatement& DBStatement::operator>>(std::string& value)
 
 DBStatement& DBStatement::operator>>(ByteArray& value)
 {
-	if (resultIndex < _numResultFields)
+	if (resultIndex < numResultFields())
 	{
-		value.truncate();
 		if (!*resultBind[resultIndex].is_null)
 		{
 			value.writeData(resultBind[resultIndex].buffer, *resultBind[resultIndex].length);
@@ -417,9 +374,9 @@ DBStatement& DBStatement::operator>>(ByteArray& value)
 void* DBStatement::getBlob(unsigned long& datasize)
 {
 	void* data = nullptr;
-	datasize = *resultBind[resultIndex].length;
-	if (resultIndex < _numResultFields)
+	if (resultIndex < numResultFields())
 	{
+		datasize = *resultBind[resultIndex].length;
 		if (!(*resultBind[resultIndex].is_null) && datasize > 0)
 		{
 			data = malloc(datasize);
@@ -451,9 +408,10 @@ bool Database::logon()
 {
 	initMtx.lock();
 	logoff();
-	mysql = mysql_init(NULL);
+	mysql = mysql_init(nullptr);
 	initMtx.unlock();
-	if (mysql == NULL) return false;
+	if (!mysql)
+		return false;
 
 	MYSQL* pMysql = mysql_real_connect(mysql, dbConfig.strHost.c_str(),
 		dbConfig.strUser.c_str(), dbConfig.strPassword.c_str(),
@@ -475,15 +433,10 @@ bool Database::logon()
 
 void Database::logoff()
 {
-	if (mysql != NULL)
+	if (mysql)
 	{
 		mysql_close(mysql);
-		mysql = NULL;
-
-		for (auto &cache : stmtCache)
-		{
-			delete cache.second;
-		}
+		mysql = nullptr;
 		stmtCache.clear();
 	}
 }
@@ -503,7 +456,7 @@ void Database::changeDatabase(const char* db)
 RecordsetPtr Database::query(const char* strSQL, int nCommit /*= 1*/)
 {
 	RecordsetPtr record;
-	const char* pError = NULL;
+	const char* pError = nullptr;
 	if (mysql_query(mysql, strSQL) == 0)
 	{
 		_hasError = false;
@@ -511,7 +464,7 @@ RecordsetPtr Database::query(const char* strSQL, int nCommit /*= 1*/)
 		MYSQL_RES* pMysqlRes = mysql_store_result(mysql);
 		while (mysql_next_result(mysql) == 0x00);
 
-		if (pMysqlRes != NULL)
+		if (pMysqlRes)
 		{
 			numResultRows = mysql_num_rows(pMysqlRes);
 			if (numResultRows > 0)
@@ -548,8 +501,8 @@ DBStatement* Database::prepare(const std::string& sql)
 	auto iter = stmtCache.find(sql);
 	if (iter != stmtCache.end())
 	{
-		dbStmt = iter->second;
-		dbStmt->reset();
+		dbStmt = iter->second.get();
+		dbStmt->clear();
 	}
 	else
 	{
@@ -562,19 +515,9 @@ DBStatement* Database::prepare(const std::string& sql)
 		}
 
 		dbStmt = new DBStatement(sql, stmt);
-		stmtCache.insert(std::make_pair(sql, dbStmt));
+		stmtCache.insert(std::make_pair(sql, std::unique_ptr<DBStatement>(dbStmt)));
 	}
 	return dbStmt;
-}
-
-void Database::freeStatement(const std::string& sql)
-{
-	auto iter = stmtCache.find(sql);
-	if (iter != stmtCache.end())
-	{
-		delete iter->second;
-		stmtCache.erase(iter);
-	}
 }
 
 //===================== DBRequestQueue Implements ========================

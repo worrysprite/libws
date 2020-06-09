@@ -19,8 +19,6 @@ namespace ws
 {
 	namespace database
 	{
-		class Database;
-
 		struct MYSQL_CONFIG
 		{
 			MYSQL_CONFIG() :nPort(3306), autoCommit(true) {}
@@ -33,6 +31,83 @@ namespace ws
 			std::string strUnixSock;
 		};
 
+		//查询结果集
+		class Recordset
+		{
+		public:
+			Recordset(MYSQL_RES* res, const std::string& sql);
+			virtual ~Recordset();
+
+			//将查询结果指针移动到下一行
+			bool nextRow();
+
+			//输出为算术数值
+			template<typename T>
+			typename std::enable_if<std::is_arithmetic<T>::value, Recordset>::type&
+				operator>>(T& value)
+			{
+				if (mysqlRow && fieldIndex < numFields)
+				{
+					const char* szRow = mysqlRow[fieldIndex++];
+					if (szRow)
+					{
+						if constexpr (std::is_same<T, int64_t>::value)
+						{
+							value = atoll(szRow);
+						}
+						else if constexpr (std::is_same<T, uint64_t>::value)
+						{
+							value = strtoull(szRow, nullptr, 10);
+						}
+						else if constexpr (std::is_same<T, float>::value)
+						{
+							value = strtof(szRow, nullptr);
+						}
+						else if constexpr (std::is_same<T, double>::value)
+						{
+							value = strtod(szRow, nullptr);
+						}
+						else
+						{
+							value = atoi(szRow);
+						}
+					}
+				}
+				else
+				{
+					spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
+				}
+				return *this;
+			}
+
+			//输出为枚举
+			template<typename T>
+			typename std::enable_if<std::is_enum<T>::value, Recordset>::type&
+				operator>>(T& value)
+			{
+				return operator>>((typename std::underlying_type<T>::type&)value);
+			}
+
+			//输出为字符串
+			Recordset& operator>>(std::string& value);
+			//输出为ByteArray，必须是blob类型
+			Recordset& operator>>(ByteArray& value);
+
+			//获取二进制数据，必须是blob类型，需要外部释放返回的数据
+			void* getBlob(unsigned long& datasize);
+			//跳过字段
+			void skipFields(int num) { fieldIndex += num; }
+
+		private:
+			uint32_t			fieldIndex;
+			uint32_t			numFields;
+			MYSQL_ROW			mysqlRow;
+			MYSQL_RES* mysqlRes;
+			std::string			sql;
+		};
+		typedef std::unique_ptr<Recordset> RecordsetPtr;
+
+		class Database;
 		class DBStatement
 		{
 			friend class Database;
@@ -45,7 +120,7 @@ namespace ws
 			typename std::enable_if<std::is_integral<T>::value, DBStatement>::type&
 				operator<<(T& value)
 			{
-				if (paramIndex < _numParams)
+				if (paramIndex < numParams())
 				{
 					MYSQL_BIND& b = paramBind[paramIndex++];
 					if constexpr (sizeof(T) == sizeof(int8_t))
@@ -74,6 +149,32 @@ namespace ws
 				return *this;
 			}
 
+			//绑定浮点数参数，需要保证value的生命周期在execute()之后！
+			template<typename T>
+			typename std::enable_if<std::is_floating_point<T>::value, DBStatement>::type&
+				operator<<(T& value)
+			{
+				if (paramIndex < numParams())
+				{
+					MYSQL_BIND& b = paramBind[paramIndex++];
+					if constexpr (std::is_same<T, float>::value)
+					{
+						b.buffer_type = MYSQL_TYPE_FLOAT;
+					}
+					else if constexpr (std::is_same<T, double>::value)
+					{
+						b.buffer_type = MYSQL_TYPE_DOUBLE;
+					}
+					b.buffer = &value;
+					b.is_unsigned = false;
+				}
+				else
+				{
+					spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
+				}
+				return *this;
+			}
+
 			//绑定枚举类型参数，需要保证value的生命周期在execute()之后！
 			template<typename T>
 			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
@@ -82,26 +183,22 @@ namespace ws
 				return operator<<((typename std::underlying_type<T>::type&)value);
 			}
 
-			//绑定浮点数参数，需要保证value的生命周期在execute()之后！
-			DBStatement& operator<<(float& value) { return bindNumberParam(value, MYSQL_TYPE_FLOAT, false); }
-			DBStatement& operator<<(double& value) { return bindNumberParam(value, MYSQL_TYPE_DOUBLE, false); }
-
-			//绑定字符串参数，会复制字符串内容！
-			DBStatement& operator<<(const std::string& value);
 			//绑定字符串参数，不会复制内容，需要保证value的生命周期在execute()之后！
-			DBStatement& bindString(const char* value, unsigned long length);
+			DBStatement& operator<<(const std::string& value);
+			//绑定字符串参数，会复制字符串内容！
+			DBStatement& bindString(const char* value, size_t length);
 
-			//绑定二进制字节块，会复制内容！
+			//绑定二进制字节块，不会复制内容，需要保证value的生命周期在execute()之后！
 			DBStatement& operator<<(const ByteArray& value);
-			//绑定二进制数据，不会复制内容，需要保证data的生命周期在execute()之后！
-			void bindBlob(enum_field_types type, void* data, unsigned long size);
+			//绑定二进制数据，会复制内容！
+			void bindBlob(void* data, unsigned long size);
 
 			//获取算术类型字段值
 			template<typename T>
 			typename std::enable_if<std::is_arithmetic<T>::value, DBStatement>::type&
 				operator>>(T& value)
 			{
-				if (resultIndex < _numResultFields)
+				if (resultIndex < numResultFields())
 				{
 					if (IS_NUM(resultBind[resultIndex].buffer_type))
 					{
@@ -143,13 +240,13 @@ namespace ws
 			//将查询结果指针移动到下一行
 			bool nextRow();
 			//清空所有绑定和查询结果
-			void reset();
+			void clear();
 			//跳过num个字段
 			inline void skipFields(int num){ resultIndex += num; }
 			//参数个数
-			inline int numParams(){ return _numParams; }
+			inline size_t numParams() { return paramBind.size(); }
 			//查询结果的字段数量
-			inline int numResultFields(){ return _numResultFields; }
+			inline int numResultFields(){ return resultBind.size(); }
 			//结果行数或影响行数
 			inline my_ulonglong numRows(){ return _numRows; }
 			//最后一次插入id（自增id字段）
@@ -158,101 +255,17 @@ namespace ws
 			inline const std::string& sql() const { return _sql; }
 
 		private:
-			template<typename T>
-			typename std::enable_if<std::is_arithmetic<T>::value, DBStatement>::type&
-				bindNumberParam(T& value, enum_field_types type, bool isUnsigned)
-			{
-				if (paramIndex < _numParams)
-				{
-					MYSQL_BIND& b = paramBind[paramIndex++];
-					b.buffer_type = type;
-					b.buffer = &value;
-					b.is_unsigned = isUnsigned;
-				}
-				else
-				{
-					spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
-				}
-				return *this;
-			}
-
-		private:
-			int				paramIndex;
-			int				_numParams;
-			int				resultIndex;
-			int				_numResultFields;
-			my_ulonglong	_numRows;
-			my_ulonglong	_lastInsertId;
-			std::string		_sql;
-			MYSQL_STMT*		stmt;
-			MYSQL_BIND*		paramBind;
-			MYSQL_BIND*		resultBind;
-			MYSQL_RES*		resultMetadata;
-			void**			paramsBuffer;
+			int							paramIndex = 0;
+			int							resultIndex = 0;
+			my_ulonglong				_numRows = 0;
+			my_ulonglong				_lastInsertId = 0;
+			std::string					_sql;
+			MYSQL_STMT*					stmt;
+			std::vector<MYSQL_BIND>		paramBind;
+			std::vector<MYSQL_BIND>		resultBind;
+			std::deque<std::string>		paramsBuffer;	//用于储存复制的参数的buffer
 		};
-
-		class Recordset
-		{
-		public:
-			Recordset(MYSQL_RES* pMysqlRes, const std::string& sql);
-			virtual ~Recordset();
-
-			//将查询结果指针移动到下一行
-			bool nextRow();
-
-			template<typename T>
-			typename std::enable_if<std::is_integral<T>::value, Recordset>::type&
-				operator>>(T& value)
-			{
-				if (mysqlRow && fieldIndex < numFields)
-				{
-					const char* szRow = mysqlRow[fieldIndex++];
-					if (szRow)
-					{
-						if constexpr (std::is_same<T, int64_t>::value)
-						{
-							value = atoll(szRow);
-						}
-						else if constexpr (std::is_same<T, uint64_t>::value)
-						{
-							value = strtoull(szRow, nullptr, 10);
-						}
-						else
-						{
-							value = atoi(szRow);
-						}
-					}
-				}
-				else
-				{
-					spdlog::error("mysql fetch field out of range!, sql: {}", sql.c_str());
-				}
-				return *this;
-			}
-
-			template<typename T>
-			typename std::enable_if<std::is_enum<T>::value, Recordset>::type&
-				operator>>(T& value)
-			{
-				return operator>>((typename std::underlying_type<T>::type&)value);
-			}
-
-			Recordset& operator>>(float& value);
-			Recordset& operator>>(double& value);
-			Recordset& operator>>(std::string& value);
-			Recordset& operator>>(ByteArray& value);
-
-			void*				getBlob(unsigned long& datasize);
-			void				skipFields(int num) { fieldIndex += num; }
-
-		private:
-			uint32_t			fieldIndex;
-			uint32_t			numFields;
-			MYSQL_ROW			mysqlRow;
-			MYSQL_RES*			mysqlRes;
-			std::string			sql;
-		};
-		typedef std::unique_ptr<Recordset> RecordsetPtr;
+		using DBStatementPtr = std::unique_ptr<DBStatement>;
 
 		class DBRequest
 		{
@@ -300,13 +313,15 @@ namespace ws
 			}
 			inline bool						hasError(){ return _hasError; }
 
-			/************************************************************************/
-			/* prepare a statement for query                                        */
-			/************************************************************************/
+			//准备一个DBStatement供查询，并将其缓存起来，提高以后查询效率
+			//若语句有语法问题则返回null
 			DBStatement*					prepare(const std::string& sql);
-			// dealloc a statement
-			void							freeStatement(const std::string& sql);
-			// execute sql query
+			//释放已缓存的DBStatement
+			inline void						freeStatement(const std::string& sql)
+			{
+				stmtCache.erase(sql);
+			}
+			//执行一个sql语句
 			RecordsetPtr					query(const char* strSQL, int nCommit = 1);
 
 		protected:
@@ -316,7 +331,7 @@ namespace ws
 			my_ulonglong									numAffectedRows;
 			my_ulonglong									numResultRows;
 			bool											_hasError;
-			std::unordered_map<std::string, DBStatement*>	stmtCache;
+			std::unordered_map<std::string, DBStatementPtr>	stmtCache;
 		};
 
 		//数据库队列
