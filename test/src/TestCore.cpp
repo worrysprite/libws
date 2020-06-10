@@ -53,12 +53,20 @@ bool testEvent()
 	// test with interface class
 	struct Listener : public EventListener
 	{
+		//Listener must be copyable
+		//Listener(const Listener&) = delete;
+
+		//and member will be copied when convert to EventCallback
+		int member = 100;
+
 		virtual void onEvent(const Event& evt) override
 		{
-			std::cout << "Trigger event, type=" << evt.type << std::endl;
+			std::cout << "Trigger event, type=" << evt.type <<
+				", member=" << this->member << std::endl;
 		}
 	} listener;
 	EventCallback cb2(listener);
+	listener.member = 300;	//will not affect cb2
 	dispatcher.addEventListener(2, &cb2);
 
 	evt.type = 2;

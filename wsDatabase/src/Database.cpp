@@ -114,12 +114,12 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
 	auto resultMetadata = mysql_stmt_result_metadata(stmt);
 	if (resultMetadata)
 	{
-		auto numResultFields = mysql_num_fields(resultMetadata);
+		uint32_t numResultFields = mysql_num_fields(resultMetadata);
 		resultBind.resize(numResultFields);
 		memset(resultBind.data(), 0, sizeof(MYSQL_BIND) * numResultFields);
 
 		MYSQL_FIELD* fields = mysql_fetch_fields(resultMetadata);
-		for (int i = 0; i < numResultFields; ++i)
+		for (uint32_t i = 0; i < numResultFields; ++i)
 		{
 			auto& b = resultBind[i];
 			b.buffer_type = fields[i].type;

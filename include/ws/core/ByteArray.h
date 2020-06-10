@@ -59,8 +59,7 @@ namespace ws
 				}
 				else if (pos < 0)
 				{
-					pos = -pos;
-					readPosition(_readPos - (size_t)pos);
+					readPosition(_readPos - (size_t)(-pos));
 				}
 			}
 
@@ -92,8 +91,8 @@ namespace ws
 			inline const void* data() const { return _data; }
 
 			//获取管理的内存块 + 偏移量
-			inline void* data(int offset) { return (uint8_t*)_data + offset; }
-			inline const void* data(int offset) const { return (uint8_t*)_data + offset; }
+			inline void* data(size_t offset) { return (uint8_t*)_data + offset; }
+			inline const void* data(size_t offset) const { return (uint8_t*)_data + offset; }
 
 			//获取当前读位置的指针
 			inline const void* readerPointer() const { return (void*)((intptr_t)_data + _readPos); }
