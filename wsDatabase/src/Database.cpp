@@ -35,6 +35,10 @@ Recordset& Recordset::operator>>(std::string& value)
 		{
 			value = szRow;
 		}
+		else
+		{
+			value.clear();
+		}
 	}
 	else
 	{
@@ -100,9 +104,9 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
 	{
 		paramBind.resize(numParams);
 		memset(paramBind.data(), 0, sizeof(MYSQL_BIND) * numParams);
-		for (int i = 0; i < numParams; ++i)
+		for (auto &b : paramBind)
 		{
-			paramBind[i].length = &paramBind[i].buffer_length;
+			b.length = &b.buffer_length;
 		}
 	}
 
@@ -117,7 +121,8 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
 		MYSQL_FIELD* fields = mysql_fetch_fields(resultMetadata);
 		for (int i = 0; i < numResultFields; ++i)
 		{
-			resultBind[i].buffer_type = fields[i].type;
+			auto& b = resultBind[i];
+			b.buffer_type = fields[i].type;
 			unsigned long buffer_length(0);
 			switch (fields[i].type)
 			{
@@ -149,9 +154,11 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
 				buffer_length = fields[i].length;
 				break;
 			}
-			resultBind[i].is_unsigned = (fields[i].flags & UNSIGNED_FLAG) > 0;
-			resultBind[i].buffer = malloc(buffer_length);
-			resultBind[i].buffer_length = buffer_length;
+			b.is_unsigned = (fields[i].flags & UNSIGNED_FLAG) > 0;
+			b.buffer = malloc(buffer_length);
+			b.buffer_length = buffer_length;
+			b.is_null = new my_bool;
+			b.length = new unsigned long;
 		}
 		if (mysql_stmt_bind_result(stmt, resultBind.data()))
 		{
@@ -166,6 +173,8 @@ DBStatement::~DBStatement()
 	for (auto& bind : resultBind)
 	{
 		free(bind.buffer);
+		delete bind.is_null;
+		delete bind.length;
 	}
 	if (stmt)
 	{
@@ -178,7 +187,7 @@ DBStatement& DBStatement::operator<<(const std::string& value)
 {
 	if (paramIndex < numParams())
 	{
-		MYSQL_BIND& b = paramBind[paramIndex];
+		auto& b = paramBind[paramIndex];
 		if (value.empty())
 		{
 			b.buffer_type = MYSQL_TYPE_NULL;
@@ -202,7 +211,7 @@ DBStatement& DBStatement::bindString(const char* value, size_t length)
 {
 	if (paramIndex < numParams())
 	{
-		MYSQL_BIND& b = paramBind[paramIndex];
+		auto& b = paramBind[paramIndex];
 		if (value && length)
 		{
 			b.buffer_type = MYSQL_TYPE_STRING;
@@ -227,7 +236,7 @@ DBStatement& DBStatement::operator<<(const ByteArray& value)
 {
 	if (paramIndex < numParams())
 	{
-		MYSQL_BIND& b = paramBind[paramIndex];
+		auto& b = paramBind[paramIndex];
 		if (value.size())
 		{
 			b.buffer_type = MYSQL_TYPE_BLOB;
@@ -251,7 +260,7 @@ void DBStatement::bindBlob(void* data, unsigned long size)
 {
 	if (paramIndex < numParams())
 	{
-		MYSQL_BIND& b = paramBind[paramIndex];
+		auto& b = paramBind[paramIndex];
 		if (data)
 		{
 			auto& buffer = paramsBuffer.emplace_back((const char*)data, size);
@@ -323,6 +332,10 @@ bool DBStatement::nextRow()
 void DBStatement::clear()
 {
 	memset(paramBind.data(), 0, sizeof(MYSQL_BIND) * paramBind.size());
+	for (auto& b : paramBind)
+	{
+		b.length = &b.buffer_length;
+	}
 	paramsBuffer.clear();
 
 	for (auto &bind : resultBind)
@@ -337,13 +350,14 @@ DBStatement& DBStatement::operator>>(std::string& value)
 {
 	if (resultIndex < numResultFields())
 	{
-		if (*resultBind[resultIndex].is_null)
+		auto& b = resultBind[resultIndex];
+		if (*b.is_null)
 		{
 			value.clear();
 		}
 		else
 		{
-			value.assign((char*)resultBind[resultIndex].buffer, *resultBind[resultIndex].length);
+			value.assign((char*)b.buffer, *b.length);
 		}
 		++resultIndex;
 	}
@@ -358,9 +372,10 @@ DBStatement& DBStatement::operator>>(ByteArray& value)
 {
 	if (resultIndex < numResultFields())
 	{
-		if (!*resultBind[resultIndex].is_null)
+		auto& b = resultBind[resultIndex];
+		if (!*b.is_null)
 		{
-			value.writeData(resultBind[resultIndex].buffer, *resultBind[resultIndex].length);
+			value.writeData(b.buffer, *b.length);
 		}
 		++resultIndex;
 	}
@@ -371,16 +386,17 @@ DBStatement& DBStatement::operator>>(ByteArray& value)
 	return *this;
 }
 
-void* DBStatement::getBlob(unsigned long& datasize)
+void* DBStatement::getBlob(size_t& datasize)
 {
 	void* data = nullptr;
 	if (resultIndex < numResultFields())
 	{
-		datasize = *resultBind[resultIndex].length;
-		if (!(*resultBind[resultIndex].is_null) && datasize > 0)
+		auto& b = resultBind[resultIndex];
+		datasize = *b.length;
+		if (!(*b.is_null) && datasize > 0)
 		{
 			data = malloc(datasize);
-			memcpy(data, resultBind[resultIndex].buffer, datasize);
+			memcpy(data, b.buffer, datasize);
 		}
 		++resultIndex;
 	}

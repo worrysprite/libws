@@ -79,7 +79,7 @@ namespace ws
 		{
 		public:
 			ServerSocket();
-			virtual ~ServerSocket(){}
+			virtual ~ServerSocket() { cleanup(); }
 
 			virtual bool								init(const ServerConfig& cfg);
 			virtual void								update();

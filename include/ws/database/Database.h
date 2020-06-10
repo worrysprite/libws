@@ -122,7 +122,7 @@ namespace ws
 			{
 				if (paramIndex < numParams())
 				{
-					MYSQL_BIND& b = paramBind[paramIndex++];
+					auto& b = paramBind[paramIndex++];
 					if constexpr (sizeof(T) == sizeof(int8_t))
 					{
 						b.buffer_type = MYSQL_TYPE_TINY;
@@ -156,7 +156,7 @@ namespace ws
 			{
 				if (paramIndex < numParams())
 				{
-					MYSQL_BIND& b = paramBind[paramIndex++];
+					auto& b = paramBind[paramIndex++];
 					if constexpr (std::is_same<T, float>::value)
 					{
 						b.buffer_type = MYSQL_TYPE_FLOAT;
@@ -200,15 +200,16 @@ namespace ws
 			{
 				if (resultIndex < numResultFields())
 				{
+					auto& b = resultBind[resultIndex];
 					if (IS_NUM(resultBind[resultIndex].buffer_type))
 					{
-						if (*resultBind[resultIndex].is_null)
+						if (*b.is_null)
 						{
 							value = 0;
 						}
 						else
 						{
-							value = *(T*)resultBind[resultIndex].buffer;
+							value = *(T*)b.buffer;
 						}
 					}
 					++resultIndex;
@@ -233,7 +234,7 @@ namespace ws
 			//获取二进制字段值，会清空原ByteArray的数据！
 			DBStatement& operator>>(ByteArray& value);
 			//获取二进制字段值，数据长度会返回到datasize
-			void* getBlob(unsigned long& datasize);
+			void* getBlob(size_t& datasize);
 
 			//执行准备的语句，执行时必须保证绑定的参数生命周期有效性！
 			bool execute();
@@ -244,9 +245,9 @@ namespace ws
 			//跳过num个字段
 			inline void skipFields(int num){ resultIndex += num; }
 			//参数个数
-			inline size_t numParams() { return paramBind.size(); }
+			inline uint32_t numParams() { return static_cast<uint32_t>(paramBind.size()); }
 			//查询结果的字段数量
-			inline int numResultFields(){ return resultBind.size(); }
+			inline uint32_t numResultFields(){ return static_cast<uint32_t>(resultBind.size()); }
 			//结果行数或影响行数
 			inline my_ulonglong numRows(){ return _numRows; }
 			//最后一次插入id（自增id字段）
@@ -255,8 +256,8 @@ namespace ws
 			inline const std::string& sql() const { return _sql; }
 
 		private:
-			int							paramIndex = 0;
-			int							resultIndex = 0;
+			uint32_t					paramIndex = 0;
+			uint32_t					resultIndex = 0;
 			my_ulonglong				_numRows = 0;
 			my_ulonglong				_lastInsertId = 0;
 			std::string					_sql;
