@@ -44,7 +44,7 @@ namespace ws
 			/************************************************************************/
 			/* 判断一个概率是否触发，默认按万分比计算                                  */
 			/************************************************************************/
-			inline static bool							isTrigger(uint16_t chance, uint16_t totalChance = 10000){ return chance > random(totalChance); }
+			inline static bool							isTrigger(uint32_t chance, uint32_t totalChance = 10000){ return chance > random(totalChance); }
 
 		private:
 			//std::mt19937::tempering_d
