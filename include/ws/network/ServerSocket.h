@@ -90,8 +90,8 @@ namespace ws
 			virtual void								update();
 			virtual void								cleanup();
 			bool										startListen();
-			bool										kickClient(uint32_t clientID);
-			ClientPtr									getClient(uint32_t clientID);
+			bool										kickClient(uint16_t clientID);
+			ClientPtr									getClient(uint16_t clientID);
 			inline uint16_t								numOnlines(){ return numClients; }
 			inline const ServerConfig&					getConfig(){ return config; }
 

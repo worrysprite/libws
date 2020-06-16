@@ -178,7 +178,9 @@ namespace ws
 						throw std::bad_alloc();
 				}
 			}
+#ifdef _DEBUG
 			memset(_data, 0, _capacity);
+#endif
 			_readPos = 0;
 			_writePos = 0;
 		}

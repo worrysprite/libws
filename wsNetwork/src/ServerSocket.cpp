@@ -1008,7 +1008,7 @@ Client* ServerSocket::addClient(Socket sock, const sockaddr_in &addr)
 }
 
 // main thread
-ClientPtr ServerSocket::getClient(uint32_t clientID)
+ClientPtr ServerSocket::getClient(uint16_t clientID)
 {
 	auto iter = allClients.find(clientID);
 	if (iter != allClients.end())
@@ -1019,7 +1019,7 @@ ClientPtr ServerSocket::getClient(uint32_t clientID)
 }
 
 // main thread
-bool ServerSocket::kickClient(uint32_t clientID)
+bool ServerSocket::kickClient(uint16_t clientID)
 {
 	ClientPtr client = getClient(clientID);
 	if (!client)

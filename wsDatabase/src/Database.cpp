@@ -217,7 +217,7 @@ DBStatement& DBStatement::bindString(const char* value, size_t length)
 			b.buffer_type = MYSQL_TYPE_STRING;
 			auto& buffer = paramsBuffer.emplace_back(value, length);
 			b.buffer = buffer.data();
-			b.buffer_length = length;
+			b.buffer_length = (unsigned long)length;
 		}
 		else
 		{
