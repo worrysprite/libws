@@ -140,6 +140,43 @@ namespace ws
 						b.buffer_type = MYSQL_TYPE_LONGLONG;
 					}
 					b.buffer = &value;
+					b.buffer_length = sizeof(T);
+					b.is_unsigned = std::is_unsigned<T>::value;
+				}
+				else
+				{
+					spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
+				}
+				return *this;
+			}
+			//绑定整型右值参数
+			template<typename T>
+			typename std::enable_if<std::is_integral<T>::value, DBStatement>::type&
+				operator<<(T&& value)
+			{
+				if (paramIndex < numParams())
+				{
+					auto& b = paramBind[paramIndex++];
+					if constexpr (sizeof(T) == sizeof(int8_t))
+					{
+						b.buffer_type = MYSQL_TYPE_TINY;
+					}
+					else if constexpr (sizeof(T) == sizeof(int16_t))
+					{
+						b.buffer_type = MYSQL_TYPE_SHORT;
+					}
+					else if constexpr (sizeof(T) == sizeof(int32_t))
+					{
+						b.buffer_type = MYSQL_TYPE_LONG;
+					}
+					else if constexpr (sizeof(T) == sizeof(int64_t))
+					{
+						b.buffer_type = MYSQL_TYPE_LONGLONG;
+					}
+
+					auto& buffer = paramsBuffer.emplace_back((const char*)&value, sizeof(T));
+					b.buffer = buffer.data();
+					b.buffer_length = sizeof(T);
 					b.is_unsigned = std::is_unsigned<T>::value;
 				}
 				else
@@ -166,6 +203,35 @@ namespace ws
 						b.buffer_type = MYSQL_TYPE_DOUBLE;
 					}
 					b.buffer = &value;
+					b.buffer_length = sizeof(T);
+					b.is_unsigned = false;
+				}
+				else
+				{
+					spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
+				}
+				return *this;
+			}
+
+			//绑定浮点数右值参数
+			template<typename T>
+			typename std::enable_if<std::is_floating_point<T>::value, DBStatement>::type&
+				operator<<(T&& value)
+			{
+				if (paramIndex < numParams())
+				{
+					auto& b = paramBind[paramIndex++];
+					if constexpr (std::is_same<T, float>::value)
+					{
+						b.buffer_type = MYSQL_TYPE_FLOAT;
+					}
+					else if constexpr (std::is_same<T, double>::value)
+					{
+						b.buffer_type = MYSQL_TYPE_DOUBLE;
+					}
+					auto& buffer = paramsBuffer.emplace_back(&value, sizeof(T));
+					b.buffer = buffer.data();
+					b.buffer_length = sizeof(T);
 					b.is_unsigned = false;
 				}
 				else
@@ -180,7 +246,15 @@ namespace ws
 			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
 				operator<<(T& value)
 			{
-				return operator<<((typename std::underlying_type<T>::type&)value);
+				return operator<<((typename std::underlying_type_t<T>&)value);
+			}
+
+			//绑定枚举类型右值参数
+			template<typename T>
+			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
+				operator<<(T&& value)
+			{
+				return operator<<((typename std::underlying_type<T>::type&&)value);
 			}
 
 			//绑定字符串参数，不会复制内容，需要保证value的生命周期在execute()之后！

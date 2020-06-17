@@ -15,7 +15,7 @@ namespace ws
 		{
 		public:
 			//构造一个字节数组
-			ByteArray(size_t length = BYTES_DEFAULT_SIZE);
+			explicit ByteArray(size_t length = BYTES_DEFAULT_SIZE);
 			//复制构造
 			ByteArray(const ByteArray& other);
 			//用一块内存构造，复制或只读
