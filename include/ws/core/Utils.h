@@ -166,6 +166,13 @@ namespace ws::core
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 	bool createPidfile(const char* pidfile);
 #endif
+
+	// from boost hash_combine
+	template<typename T> void hash_combine(size_t& seed, T const& v)
+	{
+		static std::hash<T> hasher;
+		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	}
 }
 
 #endif
