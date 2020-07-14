@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <spdlog/spdlog.h>
 #include "ws/core/Signal.h"
 #include "ws/core/Event.h"
 #include "ws/core/ByteArray.h"
@@ -7,6 +8,7 @@
 #include "ws/core/Math.h"
 #include "ws/core/AStar.h"
 #include "ws/core/TimeTool.h"
+#include "ws/core/Timer.h"
 
 using namespace ws::core;
 
@@ -313,3 +315,29 @@ bool testPidfile()
     return false;
 }
 #endif
+
+bool testTimer()
+{
+	Timer timer;
+	bool isFinish = false;
+
+	timer.addTimeCall(2000ms, [&isFinish]() {
+		spdlog::debug("2000ms callback");
+	});
+	timer.addTimeCall(10000ms, [&isFinish]() {
+		static int count = 0;
+		spdlog::debug("10000ms delay call");
+		if (count >= 2)
+		{
+			isFinish = true;
+		}
+	}, 3);
+
+	
+	while (!isFinish)
+	{
+		timer.update();
+		std::this_thread::sleep_for(1ms);
+	}
+	return true;
+}

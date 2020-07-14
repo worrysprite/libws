@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <iostream>
+#include <spdlog/spdlog.h>
 
 extern bool testSignal();
 extern bool testEvent();
@@ -12,12 +13,16 @@ extern bool testDatabase();
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 extern bool testPidfile();
 #endif
+extern bool testTimer();
 
 int main()
 {
 #if _WIN32 && _DEBUG
 	system("chcp 65001");
 #endif
+	spdlog::set_level(spdlog::level::debug);
+	spdlog::set_pattern("[%Y/%m/%d %H:%M:%S.%e] %^[%l] %v%$");
+
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 	assert(testPidfile());
 #endif
@@ -25,10 +30,11 @@ int main()
 	assert(testEvent());
 	assert(testByteArray());
 	assert(testMath());
-	assert(testAStar());
+	//assert(testAStar());
 	assert(testEnum());
 	assert(testTypeCheck());
-	assert(testDatabase());
+	//assert(testDatabase());
+	assert(testTimer());
 
 	std::cout << "all tests passed!" << std::endl;
 
