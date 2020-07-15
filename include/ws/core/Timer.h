@@ -55,10 +55,12 @@ namespace ws
 
 		private:
 			void timerProc();
+			void expand();
+			void move(const SchedulePtr& item, int level);
+			void dispatch();
+			void insert(const SchedulePtr& item);
 
-			ScheduleList* findList(uint32_t index);
-
-			static constexpr auto MIN_INTERVAL = 10ms;
+			static constexpr auto MIN_INTERVAL = 1ms;
 
 			static constexpr int NEAR_FUTURE = 1 << 8;
 			static constexpr int NEAR_MASK = NEAR_FUTURE - 1;

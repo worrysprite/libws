@@ -323,17 +323,33 @@ bool testTimer()
 
 	timer.addTimeCall(2000ms, [&isFinish]() {
 		spdlog::debug("2000ms callback");
-	});
-	timer.addTimeCall(10000ms, [&isFinish]() {
 		static int count = 0;
-		spdlog::debug("10000ms delay call");
-		if (count >= 2)
+		if (++count == 10)
 		{
 			isFinish = true;
 		}
-	}, 3);
-
-	
+	});
+	timer.delayCall(1ms, []() {
+		spdlog::debug("1ms callback");
+	});
+	timer.delayCall(255ms, []() {
+		spdlog::debug("255ms callback");
+	});
+	timer.delayCall(256ms, []() {
+		spdlog::debug("256ms callback");
+	});
+	timer.delayCall(511ms, []() {
+		spdlog::debug("511ms callback");
+	});
+	timer.delayCall(512ms, []() {
+		spdlog::debug("512ms callback");
+	});
+	timer.delayCall(16383ms, []() {
+		spdlog::debug("16383ms callback");
+	});
+	timer.delayCall(16384ms, []() {
+		spdlog::debug("16384ms callback");
+	});
 	while (!isFinish)
 	{
 		timer.update();

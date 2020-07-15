@@ -8,9 +8,8 @@ SchedulePtr Timer::addTimeCall(milliseconds interval, const TimerCallback& callb
 	{
 		uint32_t index = (uint32_t)(tick + interval / MIN_INTERVAL);
 		auto schedule = std::make_shared<Schedule>(index, times, interval, callback);
-		auto list = findList(index);
 		std::lock_guard<std::mutex> lock(addMtx);
-		list->push_back(schedule);
+		insert(schedule);
 		return schedule;
 	}
 	return nullptr;
@@ -48,67 +47,98 @@ void Timer::timerProc()
 		lastTime += delta * MIN_INTERVAL;
 		for (int i = 0; i < delta; ++i)
 		{
-			auto &list = nearFuture[tick & NEAR_MASK];
-			std::scoped_lock lock(addMtx, dispatchMtx);
-			for (auto& item : list)
-			{
-				if (item->remainTimes)
-				{
-					dispatchList.push_back(item);
-					if (item->remainTimes == -1 || --item->remainTimes)
-					{
-						item->index = (uint32_t)(tick + item->interval / MIN_INTERVAL);
-						findList(item->index)->push_back(item);
-					}
-				}
-			}
-			list.clear();
-
-			uint32_t wheelTick = ++tick;
-			for (int i = 0; i < NUM_FAR_WHEEL; ++i)
-			{
-				wheelTick >>= 8;
-				auto& list = farFuture[i][wheelTick & FAR_MASK];
-				if (i == 0)
-				{
-					for (auto& item : list)
-					{
-						nearFuture[item->index & NEAR_MASK].push_back(item);
-					}
-				}
-				else
-				{
-					uint32_t rshift = i * 6;
-					auto target = farFuture[i - 1];
-					for (auto& item : list)
-					{
-						target[(item->index >> rshift) & FAR_MASK].push_back(item);
-					}
-				}
-				list.clear();
-			}
+			dispatch();
+			++tick;
+			expand();
 		}
 		std::this_thread::sleep_for(MIN_INTERVAL);
 	}
 }
 
-Timer::ScheduleList* Timer::findList(uint32_t index)
+void Timer::expand()
 {
-	if (index < NEAR_FUTURE)
+	if ((tick & NEAR_MASK) == 0)	//进位
 	{
-		return &nearFuture[index];
+		uint32_t farTick = tick >> 8;
+		std::lock_guard<std::mutex> lock(addMtx);
+		for (int i = 0; i < NUM_FAR_WHEEL; ++i)
+		{
+			uint32_t index = farTick & FAR_MASK;
+			auto& list = farFuture[i][index];
+			for (auto& item : list)
+			{
+				move(item, i);
+			}
+			list.clear();
+			if (index != 0)
+			{
+				break;	//停止进位
+			}
+			farTick >>= 6;
+		}
+	}
+}
+
+void Timer::move(const SchedulePtr& item, int level)
+{
+	if (level == 0)
+	{
+		nearFuture[item->index & NEAR_MASK].push_back(item);
 	}
 	else
 	{
-		index >>= 8;
+		uint32_t rshift = (level - 1) * 6 + 8;
+		uint32_t index = (item->index >> rshift) & FAR_MASK;
+		if (index == 0)
+		{
+			move(item, level - 1);
+		}
+		else
+		{
+			farFuture[level - 1][index].push_back(item);
+		}
+	}
+}
+
+void Timer::dispatch()
+{
+	auto& list = nearFuture[tick & NEAR_MASK];
+	std::scoped_lock lock(addMtx, dispatchMtx);
+	for (auto& item : list)
+	{
+		if (item->remainTimes)
+		{
+			dispatchList.push_back(item);
+			if (item->remainTimes == -1 || --item->remainTimes)
+			{
+				insert(item);
+			}
+		}
+	}
+	list.clear();
+}
+
+void Timer::insert(const SchedulePtr& item)
+{
+	auto interval = item->interval / MIN_INTERVAL;
+	item->index = tick + interval;
+	if (interval < NEAR_FUTURE)
+	{
+		nearFuture[item->index & NEAR_MASK].push_back(item);
+	}
+	else
+	{
+		interval >>= 8;
+		uint32_t index = item->index >> 8;
 		for (int i = 0; i < NUM_FAR_WHEEL; ++i)
 		{
-			if (index < FAR_FUTURE)
+			if (interval < FAR_FUTURE)
 			{
-				return &farFuture[i][index];
+				farFuture[i][index & FAR_MASK].push_back(item);
+				break;
 			}
+			interval >>= 6;
 			index >>= 6;
 		}
 	}
-	return nullptr;
 }
