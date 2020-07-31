@@ -2,30 +2,35 @@
 
 using namespace ws::core;
 
-SchedulePtr Timer::addTimeCall(milliseconds interval, const TimerCallback& callback, int32_t times /*= -1*/)
+uint32_t Timer::addTimeCall(milliseconds interval, const TimerCallback& callback, int32_t times /*= -1*/)
 {
 	if (callback && times && (times == 1 || interval >= MIN_INTERVAL))
 	{
 		uint32_t index = (uint32_t)(tick + interval / MIN_INTERVAL);
 		auto schedule = std::make_shared<Schedule>(index, times, interval, callback);
 		std::lock_guard<std::mutex> lock(addMtx);
+		schedule->id = ++lastID;
 		insert(schedule);
-		return schedule;
+		scheduleList[lastID] = schedule;
+		return lastID;
 	}
-	return nullptr;
+	return 0;
 }
 
-void Timer::remove(const SchedulePtr& schedule)
+void Timer::remove(uint32_t id)
 {
-	if (schedule)
+	std::lock_guard<std::mutex> lock(addMtx);
+	auto iter = scheduleList.find(id);
+	if (iter != scheduleList.end())
 	{
-		std::lock_guard<std::mutex> lock(addMtx);
-		schedule->remainTimes = 0;
+		iter->second->remainTimes = 0;
+		scheduleList.erase(iter);
 	}
 }
 
 void Timer::update()
 {
+	ScheduleList callList;
 	{
 		std::lock_guard<std::mutex> lock(dispatchMtx);
 		callList.swap(dispatchList);
@@ -34,7 +39,6 @@ void Timer::update()
 	{
 		item->callback();
 	}
-	callList.clear();
 }
 
 void Timer::timerProc()
@@ -83,7 +87,7 @@ void Timer::move(const SchedulePtr& item, int level)
 {
 	if (level == 0)
 	{
-		nearFuture[item->index & NEAR_MASK].push_back(item);
+		nearFuture[item->index & NEAR_MASK].push_front(item);
 	}
 	else
 	{
@@ -95,7 +99,7 @@ void Timer::move(const SchedulePtr& item, int level)
 		}
 		else
 		{
-			farFuture[level - 1][index].push_back(item);
+			farFuture[level - 1][index].push_front(item);
 		}
 	}
 }
@@ -108,10 +112,14 @@ void Timer::dispatch()
 	{
 		if (item->remainTimes)
 		{
-			dispatchList.push_back(item);
+			dispatchList.push_front(item);
 			if (item->remainTimes == -1 || --item->remainTimes)
 			{
 				insert(item);
+			}
+			else
+			{
+				scheduleList.erase(item->id);
 			}
 		}
 	}
@@ -124,7 +132,7 @@ void Timer::insert(const SchedulePtr& item)
 	item->index = tick + interval;
 	if (interval < NEAR_FUTURE)
 	{
-		nearFuture[item->index & NEAR_MASK].push_back(item);
+		nearFuture[item->index & NEAR_MASK].push_front(item);
 	}
 	else
 	{
@@ -134,7 +142,7 @@ void Timer::insert(const SchedulePtr& item)
 		{
 			if (interval < FAR_FUTURE)
 			{
-				farFuture[i][index & FAR_MASK].push_back(item);
+				farFuture[i][index & FAR_MASK].push_front(item);
 				break;
 			}
 			interval >>= 6;
