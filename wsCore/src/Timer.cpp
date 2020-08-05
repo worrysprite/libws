@@ -6,8 +6,7 @@ uint32_t Timer::addTimeCall(milliseconds interval, const TimerCallback& callback
 {
 	if (callback && times && (times == 1 || interval >= MIN_INTERVAL))
 	{
-		uint32_t index = (uint32_t)(tick + interval / MIN_INTERVAL);
-		auto schedule = std::make_shared<Schedule>(index, times, interval, callback);
+		auto schedule = std::make_shared<Schedule>(times, interval, callback);
 		std::lock_guard<std::mutex> lock(addMtx);
 		schedule->id = ++lastID;
 		insert(schedule);
@@ -24,6 +23,7 @@ void Timer::remove(uint32_t id)
 	if (iter != scheduleList.end())
 	{
 		iter->second->remainTimes = 0;
+		iter->second->callback = nullptr;
 		scheduleList.erase(iter);
 	}
 }
@@ -37,7 +37,10 @@ void Timer::update()
 	}
 	for (auto& item : callList)
 	{
-		item->callback();
+		if (item->callback)
+		{
+			item->callback();
+		}
 	}
 }
 
@@ -113,7 +116,7 @@ void Timer::dispatch()
 		if (item->remainTimes)
 		{
 			dispatchList.push_front(item);
-			if (item->remainTimes == -1 || --item->remainTimes)
+			if (item->remainTimes == -1 || --item->remainTimes > 0)
 			{
 				insert(item);
 			}
@@ -129,7 +132,7 @@ void Timer::dispatch()
 void Timer::insert(const SchedulePtr& item)
 {
 	auto interval = item->interval / MIN_INTERVAL;
-	item->index = tick + interval;
+	item->index = uint32_t(tick + interval);
 	if (interval < NEAR_FUTURE)
 	{
 		nearFuture[item->index & NEAR_MASK].push_front(item);

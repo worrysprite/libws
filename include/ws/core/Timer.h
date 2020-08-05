@@ -29,13 +29,13 @@ namespace ws
 			//计划任务
 			struct Schedule final
 			{
-				Schedule(uint32_t idx, int32_t times, const milliseconds interval, const TimerCallback& cb) :
-					index(idx), remainTimes(times), interval(interval), callback(cb) {}
+				Schedule(int32_t times, const milliseconds interval, const TimerCallback& cb) :
+					remainTimes(times), interval(interval), callback(cb) {}
 				uint32_t						id = 0;
 				uint32_t						index = 0;
 				int32_t							remainTimes = 0;	//剩余次数，-1无限
 				const milliseconds				interval = 0ms;		//触发间隔
-				const TimerCallback				callback;	//触发回调
+				TimerCallback					callback;	//触发回调
 			};
 			using SchedulePtr = std::shared_ptr<Schedule>;
 			using ScheduleList = std::forward_list<SchedulePtr>;
