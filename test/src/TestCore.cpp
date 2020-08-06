@@ -187,7 +187,7 @@ bool testAStar()
 		//地图高
 		virtual uint32_t getHeight() const override { return height; }
 		//点x,y是否阻挡
-		virtual bool isBlock(uint32_t x, uint32_t y) const override
+		virtual bool isBlock(uint32_t x, uint32_t y, void* userdata) const override
 		{
 			if (x >= width || y >= height)
 				return true;	//out of range
@@ -209,7 +209,7 @@ bool testAStar()
 		sprintf(graph[y], "%03d ", y);
 		for (uint32_t x = 0; x < WIDTH; ++x)
 		{
-			if (map.isBlock(x, y))
+			if (map.isBlock(x, y, nullptr))
 			{
 				graph[y][x + 4] = '#';
 			}
