@@ -19,7 +19,7 @@ namespace ws
 			//地图高
 			virtual uint32_t getHeight() const = 0;
 			//点x,y是否阻挡
-			virtual bool isBlock(uint32_t x, uint32_t y) const = 0;
+			virtual bool isBlock(uint32_t x, uint32_t y, void* userdata) const = 0;
 		};
 
 		class PathNode
@@ -44,7 +44,7 @@ namespace ws
 			AStar(int max = 512) :count(0), maxCount(max) {}
 			~AStar();
 			//寻路，返回是否成功
-			bool findPath(const AbstractMap& map, int startX, int startY, int endX, int endY);
+			bool findPath(const AbstractMap& map, int startX, int startY, int endX, int endY, void* userdata = nullptr);
 			//获取上次寻路的结果
 			const std::list<const PathNode*>& getLastPath() const { return lastPath; }
 

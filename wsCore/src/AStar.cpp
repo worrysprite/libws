@@ -21,7 +21,7 @@ namespace ws
 			}
 		}
 
-		bool AStar::findPath(const AbstractMap& map, int startX, int startY, int endX, int endY)
+		bool AStar::findPath(const AbstractMap& map, int startX, int startY, int endX, int endY, void* userdata)
 		{
 			//清空上次路径
 			lastPath.clear();
@@ -93,7 +93,7 @@ namespace ws
 						if (x == current->x && y == current->y)
 							continue;	//当前点
 
-						if (map.isBlock(x, y))
+						if (map.isBlock(x, y, userdata))
 							continue;	//阻挡点
 
 						auto node = getNode(x, y, map.getWidth());
