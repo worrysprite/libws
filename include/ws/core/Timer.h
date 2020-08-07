@@ -63,7 +63,7 @@ namespace ws
 			void dispatch();
 			void insert(const SchedulePtr& item);
 
-			static constexpr auto MIN_INTERVAL = 1ms;
+			static constexpr auto MIN_INTERVAL = 10ms;
 
 			static constexpr int NEAR_FUTURE = 1 << 8;
 			static constexpr int NEAR_MASK = NEAR_FUTURE - 1;
