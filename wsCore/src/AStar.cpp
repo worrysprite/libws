@@ -55,14 +55,14 @@ namespace ws
 			initDebug(map, end);
 #endif
 			count = 0;
-			openList.push_back(start);
+			openList.insert(start);
 
 			PathNode* current = nullptr;
-			bool isChanged = false;
 			while (count++ < maxCount && !openList.empty())
 			{
-				current = openList.front();
-				openList.pop_front();
+				auto beg = openList.begin();
+				current = *beg;
+				openList.erase(beg);
 
 #ifdef _DEBUG_ASTAR
 				debug(current, 'o');
@@ -103,17 +103,15 @@ namespace ws
 						//计算估值
 						double g = current->g + getCost(current->x, current->y, x, y);
 						
-						isChanged = false;
 						if (node->g)
 						{
 							if (g < node->g)
 							{
+								openList.erase(node);
 								node->g = g;
 								node->f = g + node->h;
 								node->parent = current;
-
-								openList.remove(node);
-								isChanged = true;
+								openList.insert(node);
 							}
 						}
 						else
@@ -122,11 +120,7 @@ namespace ws
 							node->g = g;
 							node->f = g + node->h;
 							node->parent = current;
-							isChanged = true;
-						}
-						if (isChanged)
-						{
-							openList.insert(findPlace(openList, node->f), node);
+							openList.insert(node);
 						}
 					}
 				}
@@ -155,8 +149,8 @@ namespace ws
 			if (index < 0)
 				return nullptr;
 
-			int row = index / NUM_NODE_SIZE;
-			int col = index - row * NUM_NODE_SIZE;
+			int row = index >> 10;
+			int col = index - (row << 10);
 			if (static_cast<size_t>(row) < mapNodes.size())
 			{
 				PathNode* node = &mapNodes[row][col];
@@ -165,20 +159,6 @@ namespace ws
 				return node;
 			}
 			return nullptr;
-		}
-
-		std::list<PathNode*>::const_iterator AStar::findPlace(const std::list<PathNode*>& list, double f)
-		{
-			auto iter = list.begin();
-			while (iter != list.end())
-			{
-				if ((*iter)->f > f)
-				{
-					break;
-				}
-				++iter;
-			}
-			return iter;
 		}
 
 #ifdef _DEBUG_ASTAR
@@ -202,7 +182,7 @@ namespace ws
 			{
 				for (int x = 0; x < map.getWidth(); ++x)
 				{
-					if (map.isBlock(x, y))
+					if (map.isBlock(x, y, nullptr))
 					{
 						debugGraph[y][x] = '#';
 					}

@@ -30,7 +30,7 @@ int main()
 	assert(testEvent());
 	assert(testByteArray());
 	assert(testMath());
-	//assert(testAStar());
+	assert(testAStar());
 	assert(testEnum());
 	assert(testTypeCheck());
 	//assert(testDatabase());

@@ -6,6 +6,8 @@
 #include <functional>
 #include "Math.h"
 
+//#define _DEBUG_ASTAR
+
 namespace ws
 {
 	namespace core
@@ -36,6 +38,16 @@ namespace ws
 			bool isClosed;
 
 			PathNode* parent;
+
+			struct Compare
+			{
+				bool operator()(const PathNode* a, const PathNode* b) const
+				{
+					if (a->f == b->f)
+						return a < b;
+					return a->f < b->f;
+				}
+			};
 		};
 
 		class AStar
@@ -57,7 +69,7 @@ namespace ws
 			int					count;		//搜索次数
 			int					maxCount;	//搜索次数上限
 
-			std::list<PathNode*>		openList;
+			std::set<PathNode*, PathNode::Compare>	openList;
 			std::list<const PathNode*>	lastPath;
 
 			std::vector<PathNode*>	mapNodes;
@@ -66,8 +78,6 @@ namespace ws
 			void resizeMap(int w, int h);
 			//获取x,y对应的节点
 			PathNode* getNode(int x, int y, int width);
-
-			std::list<PathNode*>::const_iterator findPlace(const std::list<PathNode*>& list, double f);
 
 			//哈曼顿估值函数
 			static double manhattanDistance(int x, int y, int endX, int endY)
@@ -80,7 +90,7 @@ namespace ws
 			{
 				if (x1 != x2 && y1 != y2)
 				{
-					return 1.4;	//斜线方向代价1.4
+					return 1.414;	//斜线方向代价1.414
 				}
 				return 1.0;	//直线方向代价1.0
 			}

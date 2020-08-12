@@ -228,8 +228,6 @@ bool testAStar()
 	if (astar.findPath(map, 28, 71, 51, 64))
 	{
 		auto& path = astar.getLastPath();
-		std::cout << "find path success, num path nodes: " << path.size() << std::endl;
-
 		for (auto node : path)
 		{
 			graph[node->y][node->x + 4] = '*';
