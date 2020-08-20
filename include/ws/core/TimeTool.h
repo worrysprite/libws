@@ -24,15 +24,25 @@ namespace ws
 			//获取系统时间戳（毫秒）
 			inline static uint64_t getSystemTime() { return getUnixtime<system_clock>(); }
 
-			//把时间戳转成日期
-			static void LocalTime(uint64_t time, tm& date)
+			//把时间戳转成本地日期
+			static void LocalTime(time_t t, tm& date)
 			{
-				time_t t = time / 1000;
 #ifdef _WIN32
 				localtime_s(&date, &t);
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__) || \
 defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
 				localtime_r(&t, &date);
+#endif
+			}
+
+			//把时间戳转成本地日期
+			static void GMTime(time_t t, tm& date)
+			{
+#ifdef _WIN32
+				gmtime_s(&date, &t);
+#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__) || \
+defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
+				gmtime_r(&t, &date);
 #endif
 			}
 
@@ -54,10 +64,10 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			{
 				if (!time)
 				{
-					time = getUnixtime<system_clock>();
+					time = getSystemTime();
 				}
 				tm date;
-				LocalTime(time, date);
+				LocalTime(time / 1000, date);
 				date.tm_hour = 0;
 				date.tm_min = 0;
 				date.tm_sec = 0;
@@ -69,10 +79,10 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			{
 				if (!time)
 				{
-					time = getUnixtime<system_clock>();
+					time = getSystemTime();
 				}
 				tm date;
-				LocalTime(time, date);
+				LocalTime(time / 1000, date);
 				date.tm_mday = 1;
 				date.tm_hour = 0;
 				date.tm_min = 0;
@@ -100,8 +110,18 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			static uint8_t getDayofMonth(uint64_t time)
 			{
 				tm date = {0};
-				LocalTime(time, date);
+				LocalTime(time / 1000, date);
 				return date.tm_mday;
+			}
+
+			//获取时区偏移（非线程安全）
+			static int getTimeZoneOffset()
+			{
+				time_t utc = time(nullptr);
+				tm local, gmt;
+				LocalTime(utc, local);
+				GMTime(utc, gmt);
+				return local.tm_hour - gmt.tm_hour;
 			}
 		};
 	}

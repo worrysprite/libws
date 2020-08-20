@@ -56,6 +56,7 @@ namespace ws
 		{
 		public:
 			Vector2D(T x_ = 0, T y_ = 0) :x(x_), y(y_){}
+			Vector2D(const Vector2D&) = default;
 			T				x;
 			T				y;
 
@@ -114,12 +115,13 @@ namespace ws
 				return *this;
 			}
 
-			inline operator bool() const { return x == 0 && y == 0; }
 			inline Vector2D operator+(const Vector2D& other) const { return Vector2D(x + other.x, y + other.y); }
 			inline Vector2D operator-(const Vector2D& other) const { return Vector2D(x - other.x, y - other.y); }
 			inline Vector2D operator*(double value) const { return Vector2D(x * value, y * value); }
 			inline Vector2D operator/(double value) const { return Vector2D(x / value, y / value); }
+
 			inline bool operator==(const Vector2D& other) const { return x == other.x && y == other.y; }
+			inline bool operator!=(const Vector2D& other) const { return x != other.x && y != other.y; }
 
 			Vector2D& operator+=(const Vector2D& other)
 			{

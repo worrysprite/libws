@@ -168,6 +168,12 @@ bool testMath()
 	return true;
 }
 
+bool testTimeTool()
+{
+	std::cout << "timezone offset: " << TimeTool::getTimeZoneOffset() << std::endl;
+	return true;
+}
+
 bool testAStar()
 {
 	constexpr uint32_t WIDTH = 75;

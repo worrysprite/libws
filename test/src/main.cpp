@@ -6,6 +6,7 @@ extern bool testSignal();
 extern bool testEvent();
 extern bool testByteArray();
 extern bool testMath();
+extern bool testTimeTool();
 extern bool testAStar();
 extern bool testEnum();
 extern bool testTypeCheck();
@@ -30,7 +31,8 @@ int main()
 	assert(testEvent());
 	assert(testByteArray());
 	assert(testMath());
-	assert(testAStar());
+	assert(testTimeTool());
+	//assert(testAStar());
 	assert(testEnum());
 	assert(testTypeCheck());
 	//assert(testDatabase());
