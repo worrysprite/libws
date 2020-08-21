@@ -28,6 +28,9 @@ namespace ws
 
 			if (startX == endX && startY == endY)
 				return true;
+
+			if (map.isBlock(endX, endY, userdata))
+				return false;
 			
 			resizeMap(map.getWidth(), map.getHeight());
 			for (auto nodes : mapNodes)
