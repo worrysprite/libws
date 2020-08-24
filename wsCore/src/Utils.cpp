@@ -2,6 +2,7 @@
 
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 #include <unistd.h>
+#include <stdio.h>
 #include <fcntl.h>
 #endif
 
