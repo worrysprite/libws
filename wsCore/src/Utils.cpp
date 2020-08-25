@@ -41,5 +41,4 @@ namespace ws::core
 		return true;
 	}
 #endif
-
 }
