@@ -205,6 +205,12 @@ namespace ws
 				}
 			}
 
+			//检测一个点是否在矩形区域里（包含边界）
+			bool contains(const Vector2D<T>& point) const
+			{
+				return point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height;
+			}
+
 		public:
 			T		x;
 			T		y;

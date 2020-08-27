@@ -43,11 +43,12 @@ namespace ws
 			}
 			//获取写位置
 			inline size_t writePosition() const { return _writePos; }
-			//设置写位置，不会超过总容量
+			//设置写位置，若超过总容量会先扩容
 			inline void writePosition(size_t value)
 			{
 				if (_readOnly) return;
-				_writePos = value > _capacity ? _capacity : value;
+				expand(value);
+				_writePos = value;
 			}
 
 			//往前或往后移动读位置

@@ -35,7 +35,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 #endif
 			}
 
-			//把时间戳转成本地日期
+			//把时间戳转成UTC日期
 			static void GMTime(time_t t, tm& date)
 			{
 #ifdef _WIN32
@@ -59,7 +59,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 #endif
 			}
 
-			//获取时间戳当日的0点时间
+			//获取时间戳当日的0点时间（本地时区）
 			static uint64_t getZeroHourOfTime(uint64_t time = 0)
 			{
 				if (!time)
@@ -74,7 +74,31 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 				return mktime(&date) * 1000ULL;
 			}
 
-			//获取时间戳当月的第一天0点的时间
+			//获取时间戳本周的第一天0点的时间（本地时区），startOfWeek=N表示周N算作每周第一天（0=周日）
+			static uint64_t getFirstDayOfWeek(uint64_t time = 0, uint32_t startOfWeek = 0)
+			{
+				if (!time)
+				{
+					time = getSystemTime();
+				}
+				tm date;
+				LocalTime(time / 1000, date);
+
+				//计算往前推移多少天
+				int offset = date.tm_wday - int(startOfWeek % 7);
+				if (offset < 0)
+					offset += 7;
+
+				//获取前offset天的0点
+				time -= offset * 86400000ULL;
+				LocalTime(time / 1000, date);
+				date.tm_hour = 0;
+				date.tm_min = 0;
+				date.tm_sec = 0;
+				return mktime(&date) * 1000ULL;
+			}
+
+			//获取时间戳本月的第一天0点的时间（本地时区）
 			static uint64_t getFirstDayOfMonth(uint64_t time = 0)
 			{
 				if (!time)
