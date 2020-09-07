@@ -100,7 +100,7 @@ namespace ws::core::String
 	}
 
 	template<template<class ...> class Container, typename ...Args>
-	std::string join(const Container<Args...>& input, const char* glue = "")
+	std::string join(const Container<Args...>& input, const std::string& glue = "")
 	{
 		std::stringstream ss;
 		if (!input.empty())
