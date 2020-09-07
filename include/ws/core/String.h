@@ -4,16 +4,17 @@
 #include <string>
 #include <time.h>
 #include <string.h>
+#include <sstream>
 
 namespace ws::core::String
 {
 	/**
 	 * 按seperator分割str，并将每段原始char*地址结果存入output
 	 * 将会修改str（分割符改\0）
-	 * 若不包含seperator，output包含原始字符串
+	 * 若str里不存在seperator，output包含原始字符串
 	 */
-	template<class Container>
-	void split(char* str, const char* seperator, Container& output)
+	template<template<class ...> class Container, typename ...Args>
+	void split(char* str, const char* seperator, Container<char*, Args...>& output)
 	{
 		size_t strLen = strlen(str);
 		if (!strLen)
@@ -44,8 +45,8 @@ namespace ws::core::String
 	 * 不会修改原始str
 	 * 若不包含seperator，output包含原始字符串
 	 */
-	template<class Container>
-	void split(const char* str, const char* seperator, Container& output)
+	template<template<class ...> class Container, typename ...Args>
+	void split(const char* str, const char* seperator, Container<std::string, Args...>& output)
 	{
 		size_t strLen = strlen(str);
 		if (!strLen)
@@ -100,7 +101,7 @@ namespace ws::core::String
 	}
 
 	template<template<class ...> class Container, typename ...Args>
-	std::string join(const Container<Args...>& input, const std::string& glue = "")
+	std::string join(const Container<Args...>& input, const char* glue = "")
 	{
 		std::stringstream ss;
 		if (!input.empty())

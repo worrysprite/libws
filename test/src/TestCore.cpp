@@ -9,6 +9,7 @@
 #include "ws/core/AStar.h"
 #include "ws/core/TimeTool.h"
 #include "ws/core/Timer.h"
+#include "ws/core/String.h"
 
 using namespace ws::core;
 
@@ -359,5 +360,30 @@ bool testTimer()
 		timer.update();
 		std::this_thread::sleep_for(1ms);
 	}
+	return true;
+}
+
+bool testString()
+{
+	const std::string teststr("The quick brown fox jump sover the lazy dog.");
+	char input[1024] = { 0 };
+	teststr.copy(input, teststr.size());
+
+	std::vector<std::string> result1;
+	String::split(input, " ", result1);
+	if (result1.size() != 9)
+		return false;
+
+	std::vector<char*> result2;
+	String::split(input, " ", result2);
+	if (result2.size() != 9)
+		return false;
+
+	if (teststr != String::join(result1, " "))
+		return false;
+	
+	std::vector<int> nums = { 1, 2, 3, 4, 5, 6 };
+	if (std::string("1,2,3,4,5,6") != String::join(nums, ","))
+		return false;
 	return true;
 }
