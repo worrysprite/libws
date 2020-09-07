@@ -106,6 +106,20 @@ namespace ws
 			//与另一个ByteArray交换数据
 			void swap(ByteArray& other) noexcept;
 
+			template <typename T>
+			typename std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, T>
+				readNumber() const
+			{
+				constexpr size_t typeSize = sizeof(T);
+				if (typeSize <= readAvailable())
+				{
+					const T* value = (const T*)readerPointer();
+					_readPos += typeSize;
+					return *value;
+				}
+				return 0;
+			}
+
 			int8_t readInt8() const { return readNumber<int8_t>(); }
 			uint8_t readUInt8() const { return readNumber<uint8_t>(); }
 			int16_t readInt16() const { return readNumber<int16_t>(); }
@@ -146,8 +160,8 @@ namespace ws
 				return readString(readUInt16());
 			}
 
-			template <class T>
-			const ByteArray& readType(T& val) const
+			template<class T>
+			const ByteArray& operator>>(T& val) const 
 			{
 				constexpr auto typeSize = sizeof(T);
 				if (typeSize <= readAvailable())
@@ -158,21 +172,7 @@ namespace ws
 				return *this;
 			}
 
-			template <typename T>
-			typename std::enable_if<std::is_arithmetic<T>::value, T>::type
-			readNumber() const
-			{
-				constexpr size_t typeSize = sizeof(T);
-				if (typeSize <= readAvailable())
-				{
-					const T* value = (const T*)(readerPointer());
-					_readPos += typeSize;
-					return *value;
-				}
-				return 0;
-			}
-
-			const ByteArray& operator>>(int8_t& val) const { return readType(val); }
+			/*const ByteArray& operator>>(int8_t& val) const { return readType(val); }
 			const ByteArray& operator>>(uint8_t& val) const { return readType(val); }
 			const ByteArray& operator>>(int16_t& val) const { return readType(val); }
 			const ByteArray& operator>>(uint16_t& val) const { return readType(val); }
@@ -181,11 +181,10 @@ namespace ws
 			const ByteArray& operator>>(int64_t& val) const { return readType(val); }
 			const ByteArray& operator>>(uint64_t& val) const { return readType(val); }
 			const ByteArray& operator>>(float& val) const { return readType(val); }
-			const ByteArray& operator>>(double& val) const { return readType(val); }
+			const ByteArray& operator>>(double& val) const { return readType(val); }*/
+
 			//以2字节长度做前缀读取字符串
 			const ByteArray& operator>>(std::string& val) const;
-			template<class T>
-			const ByteArray& operator>>(T& val) const { return readType(val); }
 
 			//将capacity扩容到大于size尺寸，不影响内容（可能重新分配内存！）
 			void expand(size_t size);
@@ -200,11 +199,27 @@ namespace ws
 			//写入length长度的空数据(\0)
 			void writeEmptyData(size_t length);
 
+			//写入指定类型大小的空数据，并返回数据的开头作为类型指针
+			//不会执行构造函数！ByteArray只读则返回nullptr
 			template<typename T>
-			ByteArray& writeType(const T& val)
+			T* emplace()
 			{
 				if (readOnly())
-					throw std::logic_error("read only memory blocks!!");
+					return nullptr;
+
+				constexpr size_t length = sizeof(T);
+				expand(_writePos + length);
+				auto result = (T*)writerPointer();
+				memset(result, 0, length);
+				_writePos += length;
+				return result;
+			}
+
+			template<class T>
+			ByteArray& operator<<(const T& val)
+			{
+				if (readOnly())
+					throw std::runtime_error("read only memory blocks!!");
 
 				constexpr auto typeSize = sizeof(T);
 				expand(_writePos + typeSize);
@@ -214,7 +229,7 @@ namespace ws
 			}
 
 			//输入操作符
-			ByteArray& operator<<(const int8_t& val) { return writeType(val); }
+			/*ByteArray& operator<<(const int8_t& val) { return writeType(val); }
 			ByteArray& operator<<(const uint8_t& val) { return writeType(val); }
 			ByteArray& operator<<(const int16_t& val) { return writeType(val); }
 			ByteArray& operator<<(const uint16_t& val) { return writeType(val); }
@@ -223,23 +238,9 @@ namespace ws
 			ByteArray& operator<<(const int64_t& val) { return writeType(val); }
 			ByteArray& operator<<(const uint64_t& val) { return writeType(val); }
 			ByteArray& operator<<(const float& val) { return writeType(val); }
-			ByteArray& operator<<(const double& val) { return writeType(val); }
+			ByteArray& operator<<(const double& val) { return writeType(val); }*/
 			//以2字节长度做前缀写入字符串
 			ByteArray& operator<<(const std::string& val);
-
-			template<class T>
-			ByteArray& operator<<(const T& val)
-			{
-				if (readOnly())
-					throw std::logic_error("read only memory blocks!!");
-
-				constexpr auto typeSize = sizeof(T);
-				expand(_writePos + typeSize);
-				memcpy((void*)(writerPointer()), &val, typeSize);
-				_writePos += typeSize;
-
-				return *this;
-			}
 
 		private:
 			bool				isAttached;

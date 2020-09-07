@@ -19,16 +19,16 @@ namespace ws
 {
 	namespace database
 	{
-		struct MYSQL_CONFIG
+		struct MySQLConfig
 		{
-			MYSQL_CONFIG() :nPort(3306), autoCommit(true) {}
-			unsigned int nPort;
-			bool		autoCommit;
-			std::string strHost;
-			std::string strUser;
-			std::string strPassword;
-			std::string strDB;
-			std::string strUnixSock;
+			MySQLConfig() : nPort(3306), autoCommit(true) {};
+			unsigned int	nPort;
+			bool			autoCommit;
+			std::string		strHost;
+			std::string		strUser;
+			std::string		strPassword;
+			std::string		strDB;
+			std::string		strUnixSock;
 		};
 
 		//查询结果集
@@ -102,10 +102,10 @@ namespace ws
 			uint32_t			fieldIndex;
 			uint32_t			numFields;
 			MYSQL_ROW			mysqlRow;
-			MYSQL_RES* mysqlRes;
+			MYSQL_RES*			mysqlRes;
 			std::string			sql;
 		};
-		typedef std::unique_ptr<Recordset> RecordsetPtr;
+		using RecordsetPtr = std::unique_ptr<Recordset>;
 
 		class Database;
 		class DBStatement
@@ -349,7 +349,7 @@ namespace ws
 			virtual void onRequest(Database& db) = 0;
 			virtual void onFinish() = 0;
 		};
-		typedef std::shared_ptr<DBRequest> DBRequestPtr;
+		using DBRequestPtr = std::shared_ptr<DBRequest>;
 
 		class Database
 		{
@@ -360,48 +360,49 @@ namespace ws
 			/************************************************************************/
 			/* init db connection                                                   */
 			/************************************************************************/
-			void setDBConfig(const MYSQL_CONFIG& config);
+			void setDBConfig(const MySQLConfig& config);
 			bool logon();
 			void logoff();
-			void changeDatabase(const char* db);
 
-			inline bool isConnected()
+			//更换db
+			void changeDatabase(const char* db);
+			//检测连接状态
+			inline bool isConnected() const
 			{
-				if (mysql == NULL) return false;
+				if (mysql == nullptr) return false;
 				return (mysql_ping(mysql) == 0);
 			}
-			/************************************************************************/
-			/* return num affected rows of query                                    */
-			/************************************************************************/
-			inline my_ulonglong				getAffectedRows() { return numAffectedRows; };
-			/************************************************************************/
-			/* return num result of rows                                            */
-			/************************************************************************/
-			inline my_ulonglong				getResultRows() { return numResultRows; };
-			/************************************************************************/
-			/* return last insert id of query                                       */
-			/************************************************************************/
-			inline my_ulonglong				getInsertId()
+
+			//上次查询影响行数
+			inline my_ulonglong getAffectedRows() { return numAffectedRows; };
+
+			//上次查询结果行数
+			inline my_ulonglong getResultRows() { return numResultRows; };
+
+			//上次插入的自增id
+			inline my_ulonglong getInsertId()
 			{
-				if (mysql == NULL) return 0;
+				if (mysql == nullptr) return 0;
 				return mysql_insert_id(mysql);
 			}
-			inline bool						hasError(){ return _hasError; }
+			//上次查询是否有错误
+			inline bool hasError() const { return _hasError; }
 
 			//准备一个DBStatement供查询，并将其缓存起来，提高以后查询效率
 			//若语句有语法问题则返回null
-			DBStatement*					prepare(const std::string& sql);
+			DBStatement* prepare(const std::string& sql);
+
 			//释放已缓存的DBStatement
-			inline void						freeStatement(const std::string& sql)
+			inline void freeStatement(const std::string& sql)
 			{
 				stmtCache.erase(sql);
 			}
 			//执行一个sql语句
-			RecordsetPtr					query(const char* strSQL, int nCommit = 1);
+			RecordsetPtr query(const char* strSQL, int nCommit = 1);
 
 		protected:
 			static std::mutex								initMtx;
-			MYSQL_CONFIG									dbConfig;
+			MySQLConfig									dbConfig;
 			MYSQL*											mysql;
 			my_ulonglong									numAffectedRows;
 			my_ulonglong									numResultRows;
@@ -413,7 +414,7 @@ namespace ws
 		class DBQueue
 		{
 		public:
-			DBQueue(const MYSQL_CONFIG& cfg) : config(cfg) {}
+			DBQueue(const MySQLConfig& cfg) : config(cfg) {}
 			virtual ~DBQueue();
 
 			//设置数据库并发线程数
@@ -441,7 +442,7 @@ namespace ws
 			DBRequestPtr		getRequest();
 			void				DBWorkThread(WorkerThreadPtr worker);
 
-			MYSQL_CONFIG				config;
+			MySQLConfig				config;
 			std::mutex					workMtx;
 			DBRequestList				workQueue;
 			size_t						workQueueLength = 0;

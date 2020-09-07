@@ -415,7 +415,7 @@ Database::~Database()
 
 std::mutex Database::initMtx;
 
-void Database::setDBConfig(const MYSQL_CONFIG& config)
+void Database::setDBConfig(const MySQLConfig& config)
 {
 	dbConfig = config;
 }

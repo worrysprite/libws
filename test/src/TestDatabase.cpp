@@ -60,7 +60,7 @@ private:
 bool testDatabase()
 {
 	std::cout << "====================Test Database====================" << std::endl;
-	MYSQL_CONFIG dbConfig;
+	MySQLConfig dbConfig;
 	dbConfig.strHost = "127.0.0.1";
 	dbConfig.nPort = 3306;
 	dbConfig.strUser = "root";

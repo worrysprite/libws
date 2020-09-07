@@ -73,13 +73,13 @@ namespace ws::core::String
 	}
 
 	//拼接数组里的所有字符串，用glue参数拼接
-	template<template<class ...Args> class Container>
-	void join(const Container<std::string>& input, std::string& output, const char* glue = "")
+	template<template<class ...> class Container>
+	std::string join(const Container<std::string>& input, const char* glue = "")
 	{
+		std::string output;	//RVO
 		if (input.empty())
 		{
-			output.clear();
-			return;
+			return output;
 		}
 		//先计算一次总长度
 		size_t totalLength = (input.size() - 1) * strlen(glue);
@@ -96,6 +96,23 @@ namespace ws::core::String
 			output += glue;
 			output += *iter++;
 		}
+		return output;
+	}
+
+	template<template<class ...> class Container, typename ...Args>
+	std::string join(const Container<Args...>& input, const char* glue = "")
+	{
+		std::stringstream ss;
+		if (!input.empty())
+		{
+			auto iter = input.begin();
+			ss << *iter++;
+			while (iter != input.end())
+			{
+				ss << glue << *iter++;
+			}
+		}
+		return ss.str();
 	}
 
 	/**
