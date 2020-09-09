@@ -166,11 +166,14 @@ namespace ws::core
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 	bool createPidfile(const char* pidfile);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wliteral-suffix"
 	//方便使用1字节和2字节的整数字面值（MSVC支持而linux不支持）
-	constexpr int8_t operator "" i8(int i) { return (int8_t)i; }
-	constexpr uint8_t operator "" ui8(int i) { return (uint8_t)i; }
-	constexpr int16_t operator "" i16(int i) { return (int16_t)i; }
-	constexpr uint16_t operator "" ui16(int i) { return (uint16_t)i; }
+	constexpr int8_t operator "" i8(unsigned long long i) { return (int8_t)i; }
+	constexpr uint8_t operator "" ui8(unsigned long long i) { return (uint8_t)i; }
+	constexpr int16_t operator "" i16(unsigned long long i) { return (int16_t)i; }
+	constexpr uint16_t operator "" ui16(unsigned long long i) { return (uint16_t)i; }
+#pragma GCC diagnostic pop
 	
 #endif
 
