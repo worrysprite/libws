@@ -117,7 +117,7 @@ namespace ws
 					_readPos += typeSize;
 					return *value;
 				}
-				return 0;
+				return T(0);
 			}
 
 			int8_t readInt8() const { return readNumber<int8_t>(); }
