@@ -118,7 +118,7 @@ namespace ws
 			//绑定整型参数，需要保证value的生命周期在execute()之后！
 			template<typename T>
 			typename std::enable_if<std::is_integral<T>::value, DBStatement>::type&
-				operator<<(T& value)
+				operator<<(const T& value)
 			{
 				if (paramIndex < numParams())
 				{
@@ -139,7 +139,7 @@ namespace ws
 					{
 						b.buffer_type = MYSQL_TYPE_LONGLONG;
 					}
-					b.buffer = &value;
+					b.buffer = const_cast<T*>(&value);
 					b.buffer_length = sizeof(T);
 					b.is_unsigned = std::is_unsigned<T>::value;
 				}
