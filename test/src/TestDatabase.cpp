@@ -21,7 +21,7 @@ struct ItemConfig
 class TestQuery : public DBRequest
 {
 public:
-	typedef std::function<void(const ItemConfig&)> Callback;
+	using Callback = std::function<void(const ItemConfig&)>;
 
 	void testSomeOperate(Callback cb)
 	{
@@ -29,12 +29,44 @@ public:
 	}
 
 private:
-	virtual void onRequest(Database& db)
+	void onRequest(Database& db) override
 	{
-		auto record = db.query("SELECT id, name, type FROM item_config LIMIT 1");
-		if (record && record->nextRow())
+		if (db.query("SELECT id, name, type FROM item_config LIMIT 1;SELECT name FROM student LIMIT 1"))
 		{
-			*record >> item.id >> item.name >> item.type;
+			auto record = db.getLastRecord();
+			if (record && record->nextRow())
+			{
+				*record >> item.id >> item.name >> item.type;
+			}
+
+			if (db.nextRecordset())
+			{
+				record = db.getLastRecord();
+				if (record && record->nextRow())
+				{
+					*record >> item.name;
+				}
+			}
+		}
+
+		if (db.query("CALL test_proc()"))
+		{
+			auto record = db.getLastRecord();
+			if (record && record->nextRow())
+			{
+				uint64_t timestamp = 0;
+				*record >> timestamp;
+				std::cout << "call test_proc() : " << timestamp << std::endl;
+			}
+		}
+
+		if (db.query("SELECT name, type FROM item_config LIMIT 1"))
+		{
+			auto record = db.getLastRecord();
+			if (record && record->nextRow())
+			{
+				*record >> item.name;
+			}
 		}
 
 		auto stmt = db.prepare("SELECT id, name, type FROM item_config WHERE id=? AND type=?");
@@ -47,7 +79,7 @@ private:
 		}
 	}
 
-	virtual void onFinish()
+	void onFinish() override
 	{
 		callback(item);
 	}

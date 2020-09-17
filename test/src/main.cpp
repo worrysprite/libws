@@ -37,7 +37,7 @@ int main()
 	//assert(testAStar());
 	assert(testEnum());
 	assert(testTypeCheck());
-	//assert(testDatabase());
+	assert(testDatabase());
 	assert(testTimer());
 
 	std::cout << "all tests passed!" << std::endl;

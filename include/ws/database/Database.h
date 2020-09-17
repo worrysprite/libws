@@ -21,14 +21,15 @@ namespace ws
 	{
 		struct MySQLConfig
 		{
-			MySQLConfig() : nPort(3306), autoCommit(true) {};
-			unsigned int	nPort;
+			MySQLConfig() : nPort(3306), autoCommit(true), characterset("utf8mb4") {}
+			uint16_t		nPort;
 			bool			autoCommit;
 			std::string		strHost;
 			std::string		strUser;
 			std::string		strPassword;
 			std::string		strDB;
 			std::string		strUnixSock;
+			std::string		characterset;
 		};
 
 		//查询结果集
@@ -354,7 +355,7 @@ namespace ws
 		class Database
 		{
 		public:
-			Database() :mysql(nullptr), numAffectedRows(0), numResultRows(0), _hasError(false) {}
+			Database() :mysql(nullptr), numAffectedRows(0), numResultRows(0) {}
 			virtual ~Database();
 
 			/************************************************************************/
@@ -365,7 +366,8 @@ namespace ws
 			void logoff();
 
 			//更换db
-			void changeDatabase(const char* db);
+			bool changeDatabase(const std::string& db);
+
 			//检测连接状态
 			inline bool isConnected() const
 			{
@@ -374,10 +376,10 @@ namespace ws
 			}
 
 			//上次查询影响行数
-			inline my_ulonglong getAffectedRows() { return numAffectedRows; };
+			inline my_ulonglong getAffectedRows() { return numAffectedRows; }
 
 			//上次查询结果行数
-			inline my_ulonglong getResultRows() { return numResultRows; };
+			inline my_ulonglong getResultRows() { return numResultRows; }
 
 			//上次插入的自增id
 			inline my_ulonglong getInsertId()
@@ -385,8 +387,9 @@ namespace ws
 				if (mysql == nullptr) return 0;
 				return mysql_insert_id(mysql);
 			}
-			//上次查询是否有错误
-			inline bool hasError() const { return _hasError; }
+
+			//上次查询结果集
+			inline RecordsetPtr getLastRecord() { return std::move(lastRecords); }
 
 			//准备一个DBStatement供查询，并将其缓存起来，提高以后查询效率
 			//若语句有语法问题则返回null
@@ -397,16 +400,31 @@ namespace ws
 			{
 				stmtCache.erase(sql);
 			}
-			//执行一个sql语句
-			RecordsetPtr query(const char* strSQL, int nCommit = 1);
+
+			/**
+			 * 执行一个sql语句，返回是否成功
+			 * 用getResultRows获取查询结果行数
+			 * 用getLastRecord获取查询结果内容
+			 * 用getAffectedRows获取影响行数（insert,update,delete等语句）
+			 * 若字符串包含多条语句，需要用nextStatement()获取下个语句的结果
+			 */
+			bool query(const std::string& strSQL);
+
+			//获取下一个结果集，返回是否有结果集
+			bool nextRecordset();
+
+			//提交事务
+			bool commit() { return mysql_commit(mysql); }
+			//回滚事务
+			bool rollback() { return mysql_rollback(mysql); }
 
 		protected:
-			static std::mutex								initMtx;
-			MySQLConfig									dbConfig;
+			MySQLConfig										dbConfig;
 			MYSQL*											mysql;
 			my_ulonglong									numAffectedRows;
 			my_ulonglong									numResultRows;
-			bool											_hasError;
+			RecordsetPtr									lastRecords;
+			std::string										lastSQL;
 			std::unordered_map<std::string, DBStatementPtr>	stmtCache;
 		};
 
@@ -442,7 +460,7 @@ namespace ws
 			DBRequestPtr		getRequest();
 			void				DBWorkThread(WorkerThreadPtr worker);
 
-			MySQLConfig				config;
+			MySQLConfig					config;
 			std::mutex					workMtx;
 			DBRequestList				workQueue;
 			size_t						workQueueLength = 0;

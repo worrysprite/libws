@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <iostream>
 #include <functional>
+#include <chrono>
 
 using namespace ws::database;
+using namespace std::chrono;
 
 //===================== Recordset Implements ========================
 Recordset::Recordset(MYSQL_RES* res, const std::string& sql) :
@@ -413,8 +415,6 @@ Database::~Database()
 	logoff();
 }
 
-std::mutex Database::initMtx;
-
 void Database::setDBConfig(const MySQLConfig& config)
 {
 	dbConfig = config;
@@ -422,6 +422,7 @@ void Database::setDBConfig(const MySQLConfig& config)
 
 bool Database::logon()
 {
+	static std::mutex initMtx;
 	initMtx.lock();
 	logoff();
 	mysql = mysql_init(nullptr);
@@ -429,17 +430,17 @@ bool Database::logon()
 	if (!mysql)
 		return false;
 
-	MYSQL* pMysql = mysql_real_connect(mysql, dbConfig.strHost.c_str(),
+	mysql = mysql_real_connect(mysql, dbConfig.strHost.c_str(),
 		dbConfig.strUser.c_str(), dbConfig.strPassword.c_str(),
-		dbConfig.strDB.c_str(), dbConfig.nPort, dbConfig.strUnixSock.c_str(), CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+		dbConfig.strDB.c_str(), dbConfig.nPort, dbConfig.strUnixSock.c_str(),
+		CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
 
-	if (pMysql)
+	if (mysql)
 	{
-		mysql_set_character_set(pMysql, "utf8mb4");
-		if (dbConfig.autoCommit)
-		{
-			mysql_autocommit(pMysql, 1);
-		}
+		mysql_set_character_set(mysql, dbConfig.characterset.c_str());
+		mysql_autocommit(mysql, dbConfig.autoCommit);
+		bool autoReconnect = true;
+		mysql_options(mysql, MYSQL_OPT_RECONNECT, &autoReconnect);
 		spdlog::info("mysql connect successful.");
 		return true;
 	}
@@ -457,58 +458,19 @@ void Database::logoff()
 	}
 }
 
-void Database::changeDatabase(const char* db)
+bool Database::changeDatabase(const std::string& db)
 {
 	dbConfig.strDB = db;
 	if (mysql)
 	{
-		if (mysql_select_db(mysql, db))
+		if (mysql_select_db(mysql, db.c_str()))
 		{
 			spdlog::error("Change db failed! db={}", db);
+			return false;
 		}
+		return true;
 	}
-}
-
-RecordsetPtr Database::query(const char* strSQL, int nCommit /*= 1*/)
-{
-	RecordsetPtr record;
-	const char* pError = nullptr;
-	if (mysql_query(mysql, strSQL) == 0)
-	{
-		_hasError = false;
-		numAffectedRows = mysql_affected_rows(mysql);
-		MYSQL_RES* pMysqlRes = mysql_store_result(mysql);
-		while (mysql_next_result(mysql) == 0x00);
-
-		if (pMysqlRes)
-		{
-			numResultRows = mysql_num_rows(pMysqlRes);
-			if (numResultRows > 0)
-			{
-				record = std::make_unique<Recordset>(pMysqlRes, strSQL);
-			}
-			else
-			{
-				mysql_free_result(pMysqlRes);
-			}
-			if (nCommit)
-			{
-				mysql_commit(mysql);
-			}
-		}
-	}
-	else
-	{
-		_hasError = true;
-		numResultRows = 0;
-		numAffectedRows = 0;
-		pError = mysql_error(mysql);
-		if (pError)
-		{
-			spdlog::error("DBError: {}, SQL: {}", pError, strSQL);
-		}
-	}
-	return record;
+	return false;
 }
 
 DBStatement* Database::prepare(const std::string& sql)
@@ -534,6 +496,86 @@ DBStatement* Database::prepare(const std::string& sql)
 		stmtCache.insert(std::make_pair(sql, std::unique_ptr<DBStatement>(dbStmt)));
 	}
 	return dbStmt;
+}
+
+bool Database::query(const std::string& strSQL)
+{
+	//忽略上一个查询的其他结果集
+	while (mysql_next_result(mysql) == 0)
+	{
+		if (mysql_field_count(mysql) > 0)
+		{
+			MYSQL_RES* mysqlResult = mysql_store_result(mysql);
+			if (mysqlResult)
+			{
+				mysql_free_result(mysqlResult);
+			}
+		}
+	}
+
+	if (mysql_query(mysql, strSQL.c_str()) == 0)
+	{
+		lastSQL = strSQL;
+		if (mysql_field_count(mysql) > 0)
+		{
+			MYSQL_RES* mysqlResult = mysql_store_result(mysql);
+			if (mysqlResult)
+			{
+				numResultRows = mysql_num_rows(mysqlResult);
+				if (numResultRows > 0)
+				{
+					lastRecords = std::make_unique<Recordset>(mysqlResult, strSQL);
+				}
+				else
+				{
+					mysql_free_result(mysqlResult);
+				}
+			}
+		}
+		else
+		{
+			lastRecords.reset();
+			numAffectedRows = mysql_affected_rows(mysql);
+		}
+		return true;
+	}
+
+	lastSQL.clear();
+	lastRecords.reset();
+	numResultRows = 0;
+	numAffectedRows = 0;
+	spdlog::error("DBError: {}, SQL: {}", mysql_error(mysql), strSQL.c_str());
+	return false;
+}
+
+bool Database::nextRecordset()
+{
+	if (mysql_next_result(mysql) == 0)
+	{
+		if (mysql_field_count(mysql) > 0)
+		{
+			MYSQL_RES* mysqlResult = mysql_store_result(mysql);
+			if (mysqlResult)
+			{
+				numResultRows = mysql_num_rows(mysqlResult);
+				if (numResultRows > 0)
+				{
+					lastRecords = std::make_unique<Recordset>(mysqlResult, lastSQL);
+				}
+				else
+				{
+					mysql_free_result(mysqlResult);
+				}
+			}
+		}
+		else
+		{
+			lastRecords.reset();
+			numAffectedRows = mysql_affected_rows(mysql);
+		}
+		return true;
+	}
+	return false;
 }
 
 //===================== DBRequestQueue Implements ========================
@@ -624,21 +666,19 @@ void DBQueue::DBWorkThread(WorkerThreadPtr worker)
 {
 	Database db;
 	db.setDBConfig(config);
+
 	DBRequestPtr request;
-	const std::chrono::milliseconds requestWait(100);
-	const std::chrono::microseconds connectWait(500);
-	
 	while (!worker->isExit)
 	{
 		if (!(request = getRequest()))
 		{
-			std::this_thread::sleep_for(requestWait);
+			std::this_thread::sleep_for(100ms);
 			continue;
 		}
 		while (!db.isConnected())
 		{
 			db.logon();
-			std::this_thread::sleep_for(connectWait);
+			std::this_thread::sleep_for(100ms);
 		}
 		request->onRequest(db);
 		std::lock_guard<std::mutex> lock(finishMtx);
