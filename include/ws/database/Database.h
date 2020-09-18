@@ -21,14 +21,15 @@ namespace ws
 	{
 		struct MySQLConfig
 		{
-			MySQLConfig() : nPort(3306), autoCommit(true), characterset("utf8mb4") {}
-			uint16_t		nPort;
+			MySQLConfig() : port(3306), autoCommit(true), host("localhost"),
+				user("root"), characterset("utf8mb4") {}
+			uint16_t		port;
 			bool			autoCommit;
-			std::string		strHost;
-			std::string		strUser;
-			std::string		strPassword;
-			std::string		strDB;
-			std::string		strUnixSock;
+			std::string		host;
+			std::string		user;
+			std::string		password;
+			std::string		database;
+			std::string		unixSock;
 			std::string		characterset;
 		};
 
@@ -435,14 +436,20 @@ namespace ws
 			DBQueue(const MySQLConfig& cfg) : config(cfg) {}
 			virtual ~DBQueue();
 
-			//设置数据库并发线程数
-			void				setThread(size_t numThread);
+			//获取数据库连接配置
+			const MySQLConfig& getConfig() const { return config; }
+			//设置数据库连接配置，修改后不会影响现有连接
+			void setConfig(const MySQLConfig& cfg) { config = cfg; }
+			
+			//设置数据库并发线程数，小于当前线程数时会使删除的线程完成正在查询的请求后退出
+			void setThread(size_t numThread);
+
 			//添加一个数据库请求到队列
-			void				addRequest(DBRequestPtr request);
+			void addRequest(DBRequestPtr request);
 			//业务线程通过update完成数据库请求，获取结果
-			void				update();
+			void update();
 			//获取队列长度
-			inline size_t		getQueueLength()
+			inline size_t getQueueLength()
 			{
 				std::lock_guard<std::mutex> lock(workMtx);
 				return workQueueLength;

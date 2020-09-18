@@ -93,13 +93,13 @@ bool testDatabase()
 {
 	std::cout << "====================Test Database====================" << std::endl;
 	MySQLConfig dbConfig;
-	dbConfig.strHost = "127.0.0.1";
-	dbConfig.nPort = 3306;
-	dbConfig.strUser = "root";
-	dbConfig.strPassword = "";
-	dbConfig.strDB = "testdb";
+	dbConfig.host = "127.0.0.1";
+	dbConfig.port = 3306;
+	dbConfig.user = "root";
+	dbConfig.password = "";
+	dbConfig.database = "testdb";
 #if defined(__linux__) || defined(__APPLE__)
-	dbConfig.strUnixSock = "/tmp/mysql.sock";
+	dbConfig.unixSock = "/tmp/mysql.sock";
 #endif
 
 	DBQueue queue(dbConfig);

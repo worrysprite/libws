@@ -430,9 +430,9 @@ bool Database::logon()
 	if (!mysql)
 		return false;
 
-	mysql = mysql_real_connect(mysql, dbConfig.strHost.c_str(),
-		dbConfig.strUser.c_str(), dbConfig.strPassword.c_str(),
-		dbConfig.strDB.c_str(), dbConfig.nPort, dbConfig.strUnixSock.c_str(),
+	mysql = mysql_real_connect(mysql, dbConfig.host.c_str(),
+		dbConfig.user.c_str(), dbConfig.password.c_str(),
+		dbConfig.database.c_str(), dbConfig.port, dbConfig.unixSock.c_str(),
 		CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
 
 	if (mysql)
@@ -460,7 +460,7 @@ void Database::logoff()
 
 bool Database::changeDatabase(const std::string& db)
 {
-	dbConfig.strDB = db;
+	dbConfig.database = db;
 	if (mysql)
 	{
 		if (mysql_select_db(mysql, db.c_str()))
