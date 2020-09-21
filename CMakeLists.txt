@@ -11,7 +11,7 @@ INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/spdlog/include")
 add_compile_options("/std:c++17" "/utf-8" "/MP" "$<$<CONFIG:RELEASE>:/O2>")
 
 else (CMAKE_COMPILER_IS_GNUCXX)
-SET(BUILD_SHARED_LIBS true)
+SET(BUILD_SHARED_LIBS false)
 SET(CMAKE_INSTALL_PREFIX "/usr/local/libws")
 add_compile_options("-std=c++17" "-Wall" "$<$<CONFIG:DEBUG>:-g>" "$<$<CONFIG:RELEASE>:-O2>")
 

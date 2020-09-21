@@ -430,12 +430,10 @@ bool Database::logon()
 	if (!mysql)
 		return false;
 
-	mysql = mysql_real_connect(mysql, dbConfig.host.c_str(),
+	if (mysql == mysql_real_connect(mysql, dbConfig.host.c_str(),
 		dbConfig.user.c_str(), dbConfig.password.c_str(),
 		dbConfig.database.c_str(), dbConfig.port, dbConfig.unixSock.c_str(),
-		CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
-
-	if (mysql)
+		CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS))
 	{
 		mysql_set_character_set(mysql, dbConfig.characterset.c_str());
 		mysql_autocommit(mysql, dbConfig.autoCommit);
@@ -444,7 +442,7 @@ bool Database::logon()
 		spdlog::info("mysql connect successful.");
 		return true;
 	}
-	spdlog::error("Fail to connect to mysql: {}", mysql_error(mysql));
+	spdlog::error("Failed to connect to mysql: {}", mysql_error(mysql));
 	return false;
 }
 
@@ -544,7 +542,7 @@ bool Database::query(const std::string& strSQL)
 	lastRecords.reset();
 	numResultRows = 0;
 	numAffectedRows = 0;
-	spdlog::error("DBError: {}, SQL: {}", mysql_error(mysql), strSQL.c_str());
+	spdlog::error("query error: {}, SQL: {}", mysql_error(mysql), strSQL.c_str());
 	return false;
 }
 
@@ -678,7 +676,7 @@ void DBQueue::DBWorkThread(WorkerThreadPtr worker)
 		while (!db.isConnected())
 		{
 			db.logon();
-			std::this_thread::sleep_for(100ms);
+			std::this_thread::sleep_for(3s);
 		}
 		request->onRequest(db);
 		std::lock_guard<std::mutex> lock(finishMtx);
