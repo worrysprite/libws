@@ -430,6 +430,7 @@ bool Database::logon()
 	if (!mysql)
 		return false;
 
+	//此处不能使用自动连接，因为缓存了statement，连接断开时缓存失效必须清理重连
 	if (mysql == mysql_real_connect(mysql, dbConfig.host.c_str(),
 		dbConfig.user.c_str(), dbConfig.password.c_str(),
 		dbConfig.database.c_str(), dbConfig.port, dbConfig.unixSock.c_str(),
@@ -437,8 +438,6 @@ bool Database::logon()
 	{
 		mysql_set_character_set(mysql, dbConfig.characterset.c_str());
 		mysql_autocommit(mysql, dbConfig.autoCommit);
-		bool autoReconnect = true;
-		mysql_options(mysql, MYSQL_OPT_RECONNECT, &autoReconnect);
 		spdlog::info("mysql connect successful.");
 		return true;
 	}
@@ -450,9 +449,9 @@ void Database::logoff()
 {
 	if (mysql)
 	{
+		stmtCache.clear();
 		mysql_close(mysql);
 		mysql = nullptr;
-		stmtCache.clear();
 	}
 }
 
