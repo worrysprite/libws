@@ -69,8 +69,8 @@ namespace ws
 			inline Vector2D& setLength(double value)
 			{
 				double angle(getAngle());
-				x = cos(angle) * value;
-				y = sin(angle) * value;
+				x = T(cos(angle) * value);
+				y = T(sin(angle) * value);
 				return *this;
 			}
 
@@ -80,8 +80,8 @@ namespace ws
 			inline Vector2D& setAngle(double value)
 			{
 				double length(getLength());
-				x = cos(value) * length;
-				y = sin(value) * length;
+				x = T(cos(value) * length);
+				y = T(sin(value) * length);
 				return *this;
 			}
 
@@ -121,7 +121,7 @@ namespace ws
 			inline Vector2D operator/(double value) const { return Vector2D(x / value, y / value); }
 
 			inline bool operator==(const Vector2D& other) const { return x == other.x && y == other.y; }
-			inline bool operator!=(const Vector2D& other) const { return x != other.x && y != other.y; }
+			inline bool operator!=(const Vector2D& other) const { return x != other.x || y != other.y; }
 
 			Vector2D& operator+=(const Vector2D& other)
 			{
