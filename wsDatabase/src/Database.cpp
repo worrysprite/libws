@@ -32,10 +32,12 @@ Recordset& Recordset::operator>>(std::string& value)
 {
 	if (mysqlRow && fieldIndex < numFields)
 	{
+		auto lengths = mysql_fetch_lengths(mysqlRes);
+		auto datasize = lengths[fieldIndex];
 		const char* szRow = mysqlRow[fieldIndex++];
-		if (szRow)
+		if (szRow && datasize)
 		{
-			value = szRow;
+			value.assign(szRow, datasize);
 		}
 		else
 		{
@@ -56,7 +58,8 @@ Recordset& Recordset::operator>>(ByteArray& value)
 		MYSQL_FIELD* field = mysql_fetch_field_direct(mysqlRes, fieldIndex);
 		if (IS_BLOB(field->type))
 		{
-			unsigned long datasize = field->max_length;
+			auto lengths = mysql_fetch_lengths(mysqlRes);
+			auto datasize = lengths[fieldIndex];
 			if (datasize > 0)
 			{
 				const char* szRow = mysqlRow[fieldIndex++];
