@@ -626,7 +626,7 @@ void DBQueue::setThread(size_t numThread)
 void DBQueue::addRequest(DBRequestPtr request)
 {
 	std::lock_guard<std::mutex> lock(workMtx);
-	workQueue.push(request);
+	workQueue.push_back(request);
 	workQueueLength = workQueue.size();
 }
 
@@ -641,10 +641,8 @@ void DBQueue::update()
 	}
 	finishMtx.unlock();
 	
-	while (!tmpQueue.empty())
+	for (auto &request : tmpQueue)
 	{
-		DBRequestPtr request = tmpQueue.front();
-		tmpQueue.pop();
 		request->onFinish();
 	}
 }
@@ -656,7 +654,7 @@ DBRequestPtr DBQueue::getRequest()
 	if (!workQueue.empty())
 	{
 		request = workQueue.front();
-		workQueue.pop();
+		workQueue.pop_front();
 		workQueueLength = workQueue.size();
 	}
 	return request;
@@ -675,13 +673,20 @@ void DBQueue::DBWorkThread(WorkerThreadPtr worker)
 			std::this_thread::sleep_for(100ms);
 			continue;
 		}
+		int retries = 0;
 		while (!db.isConnected())
 		{
+			if (++retries > 5)
+			{
+				spdlog::error("unable to connect mysql host[{}:{}]!", config.host, config.port);
+				std::lock_guard<std::mutex> lock(workMtx);
+				workQueue.push_front(request);
+				return;
+			}
 			db.logon();
-			std::this_thread::sleep_for(3s);
 		}
 		request->onRequest(db);
 		std::lock_guard<std::mutex> lock(finishMtx);
-		finishQueue.push(request);
+		finishQueue.push_back(request);
 	}
 }

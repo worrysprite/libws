@@ -373,7 +373,7 @@ namespace ws
 			inline bool isConnected() const
 			{
 				if (mysql == nullptr) return false;
-				return (mysql_ping(mysql) == 0);
+				return mysql_ping(mysql) == 0;
 			}
 
 			//上次查询影响行数
@@ -463,7 +463,7 @@ namespace ws
 			};
 			using WorkerThreadPtr = std::shared_ptr<WorkerThread>;
 
-			using DBRequestList = std::queue<DBRequestPtr>;
+			using DBRequestList = std::deque<DBRequestPtr>;
 			DBRequestPtr		getRequest();
 			void				DBWorkThread(WorkerThreadPtr worker);
 
