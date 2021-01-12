@@ -89,7 +89,7 @@ int ServerSocket::processEventThread()
 			}
 			else
 			{
-				shutdown(ioData->acceptSocket, SD_BOTH);
+				//shutdown(ioData->acceptSocket, SD_BOTH);
 				closesocket(ioData->acceptSocket);
 				releaseOverlappedData(ioData);
 			}
@@ -266,7 +266,7 @@ void ServerSocket::cleanup()
 	allClients.clear();
 	numClients = 0;
 
-	shutdown(listenSocket, SD_BOTH);
+	//shutdown(listenSocket, SD_BOTH);
 	closesocket(listenSocket);
 	CloseHandle(completionPort);
 	WSACleanup();
@@ -337,7 +337,7 @@ void ServerSocket::initOverlappedData(OverlappedData& data, SocketOperation oper
 // main thread and socket threads
 int ServerSocket::postAcceptEx()
 {
-	SOCKET acceptSocket = WSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
+	SOCKET acceptSocket = WSASocketW(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
 	auto &ioData = createOverlappedData(SocketOperation::ACCEPT, BUFFER_SIZE, acceptSocket);
 	DWORD dwBytes = 0;
 	int result = lpfnAcceptEx(listenSocket, acceptSocket, ioData.buffer, 0,
@@ -389,7 +389,7 @@ void ServerSocket::postCloseServer()
 // main thread
 void ServerSocket::destroyClient(ClientPtr client)
 {
-	shutdown(client->socket, SD_BOTH);
+	//shutdown(client->socket, SD_SEND);
 	closesocket(client->socket);
 	if (config.onClientDestroyed)
 	{
@@ -564,7 +564,7 @@ void ServerSocket::cleanup()
 	allClients.clear();
 	numClients = 0;
 	// close listen port
-	shutdown(listenSocket, SHUT_RDWR);
+	//shutdown(listenSocket, SHUT_RDWR);
 	close(listenSocket);
 }
 
@@ -640,7 +640,7 @@ void ServerSocket::writeFromBuffer(Client& client)
 // main thread
 void ServerSocket::destroyClient(ClientPtr client)
 {
-	shutdown(client->socket, SHUT_RDWR);
+	//shutdown(client->socket, SHUT_RDWR);
 	close(client->socket);
 	if (config.onClientDestroyed)
 	{
@@ -830,7 +830,7 @@ void ServerSocket::cleanup()
     allClients.clear();
     numClients = 0;
     // close listen port
-    shutdown(listenSocket, SHUT_RDWR);
+    //shutdown(listenSocket, SHUT_RDWR);
     close(listenSocket);
 }
 
@@ -918,7 +918,7 @@ bool ServerSocket::setNonBlock(int sockfd)
 // main thread
 void ServerSocket::destroyClient(ClientPtr client)
 {
-    shutdown(client->socket, SHUT_RDWR);
+    //shutdown(client->socket, SHUT_RDWR);
 	close(client->socket);
 	if (config.onClientDestroyed)
 	{
