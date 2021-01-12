@@ -1,31 +1,28 @@
-#ifndef __WS_UTILS_TIME_TOOL_H__
-#define __WS_UTILS_TIME_TOOL_H__
-
+#pragma once
 #include <stdint.h>
 #include <chrono>
-
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-using namespace std::chrono;
+using milliseconds = std::chrono::milliseconds;
+using system_clock = std::chrono::system_clock;
 
 namespace ws
 {
 	namespace core
 	{
-		class TimeTool
+		namespace TimeTool
 		{
-		public:
 			//获取时间戳
 			template<class ClockType>
-			inline static uint64_t getUnixtime(){ return (uint64_t)duration_cast<milliseconds>(ClockType::now().time_since_epoch()).count(); }
+			inline uint64_t getUnixtime() { return (uint64_t)std::chrono::duration_cast<milliseconds>(ClockType::now().time_since_epoch()).count(); }
 
 			//获取系统时间戳（毫秒）
-			inline static uint64_t getSystemTime() { return getUnixtime<system_clock>(); }
+			inline uint64_t getSystemTime() { return getUnixtime<system_clock>(); }
 
 			//把时间戳转成本地日期
-			static void LocalTime(time_t t, tm& date)
+			inline void LocalTime(time_t t, tm& date)
 			{
 #ifdef _WIN32
 				localtime_s(&date, &t);
@@ -36,7 +33,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			}
 
 			//把时间戳转成UTC日期
-			static void GMTime(time_t t, tm& date)
+			inline void GMTime(time_t t, tm& date)
 			{
 #ifdef _WIN32
 				gmtime_s(&date, &t);
@@ -47,7 +44,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			}
 
 			//获取系统运行时间（毫秒）
-			static uint64_t getTickCount()
+			inline uint64_t getTickCount()
 			{
 #ifdef _WIN32
 				return GetTickCount64();
@@ -60,7 +57,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			}
 
 			//获取时间戳当日的0点时间（本地时区）
-			static uint64_t getZeroHourOfTime(uint64_t time = 0)
+			inline uint64_t getZeroHourOfTime(uint64_t time = 0)
 			{
 				if (!time)
 				{
@@ -75,7 +72,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			}
 
 			//获取时间戳本周的第一天0点的时间（本地时区），startOfWeek=N表示周N算作每周第一天（0=周日）
-			static uint64_t getFirstDayOfWeek(uint64_t time = 0, uint32_t startOfWeek = 0)
+			inline uint64_t getFirstDayOfWeek(uint64_t time = 0, uint32_t startOfWeek = 0)
 			{
 				if (!time)
 				{
@@ -99,7 +96,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			}
 
 			//获取时间戳本月的第一天0点的时间（本地时区）
-			static uint64_t getFirstDayOfMonth(uint64_t time = 0)
+			inline uint64_t getFirstDayOfMonth(uint64_t time = 0)
 			{
 				if (!time)
 				{
@@ -115,7 +112,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			}
 
 			//判断一个时间是否是昨天或更早之前
-			static bool isYesterdayBefore(uint64_t time, uint64_t offset = 0)
+			inline bool isYesterdayBefore(uint64_t time, uint64_t offset = 0)
 			{
 				if (!time)
 				{
@@ -131,24 +128,22 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			}
 
 			//获取当前时间在本月的第N天
-			static uint8_t getDayofMonth(uint64_t time)
+			inline uint8_t getDayofMonth(uint64_t time)
 			{
 				tm date = {0};
 				LocalTime(time / 1000, date);
 				return date.tm_mday;
 			}
 
-			//获取时区偏移（非线程安全）
-			static int getTimeZoneOffset()
+			//获取时区偏移的分钟数（非线程安全）
+			inline int getTimeZoneOffset()
 			{
-				time_t utc = time(nullptr);
-				tm local, gmt;
-				LocalTime(utc, local);
-				GMTime(utc, gmt);
-				return local.tm_hour - gmt.tm_hour;
+				auto localts = time(nullptr);
+				tm gmt;
+				GMTime(localts, gmt);
+				auto gmts = mktime(&gmt);
+				return (int)difftime(localts, gmts) / 60;
 			}
-		};
+		}
 	}
 }
-
-#endif

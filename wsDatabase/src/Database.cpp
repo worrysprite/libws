@@ -589,8 +589,8 @@ DBQueue::~DBQueue()
 	}
 	for (auto &th : workerThreads)
 	{
-		th->isExit = true;
-		th->thread->join();
+		th.isExit = true;
+		th.thread.join();
 		spdlog::debug("DBQueue worker thread joined.");
 	}
 	//finishQueue maybe not empty after workers joined.
@@ -604,9 +604,8 @@ void DBQueue::setThread(size_t numThread)
 		//add more threads
 		for (size_t i = workerThreads.size(); i < numThread; i++)
 		{
-			auto worker = std::make_shared<WorkerThread>();
-			worker->thread = std::make_unique<std::thread>(std::bind(&DBQueue::DBWorkThread, this, std::placeholders::_1), worker);
-			workerThreads.push_back(worker);
+			auto& worker = workerThreads.emplace_back();
+			worker.thread = std::thread(&DBQueue::DBWorkThread, this, std::ref(worker));
 		}
 	}
 	else
@@ -616,8 +615,8 @@ void DBQueue::setThread(size_t numThread)
 		{
 			auto &worker = workerThreads.back();
 			//worker->thread->detach();
-			worker->isExit = true;
-			worker->thread->join();
+			worker.isExit = true;
+			worker.thread.join();
 			workerThreads.pop_back();
 		}
 	}
@@ -660,13 +659,13 @@ DBRequestPtr DBQueue::getRequest()
 	return request;
 }
 
-void DBQueue::DBWorkThread(WorkerThreadPtr worker)
+void DBQueue::DBWorkThread(const WorkerThread& worker)
 {
 	Database db;
 	db.setDBConfig(config);
 
 	DBRequestPtr request;
-	while (!worker->isExit)
+	while (!worker.isExit)
 	{
 		if (!(request = getRequest()))
 		{
@@ -676,14 +675,13 @@ void DBQueue::DBWorkThread(WorkerThreadPtr worker)
 		int retries = 0;
 		while (!db.isConnected())
 		{
-			if (++retries > 5)
+			if (retries > 0)
 			{
 				spdlog::error("unable to connect mysql host[{}:{}]!", config.host, config.port);
-				std::lock_guard<std::mutex> lock(workMtx);
-				workQueue.push_front(request);
-				return;
+				std::this_thread::sleep_for(5s);
 			}
 			db.logon();
+			++retries;
 		}
 		request->onRequest(db);
 		std::lock_guard<std::mutex> lock(finishMtx);

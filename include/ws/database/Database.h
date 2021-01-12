@@ -1,13 +1,11 @@
-#ifndef __WS_DATABASE_H__
-#define __WS_DATABASE_H__
-
+#pragma once
 #include <mysql.h>
 #include <string>
-#include <queue>
+#include <vector>
+#include <list>
 #include <deque>
 #include <unordered_map>
 #include <mutex>
-#include <vector>
 #include <thread>
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -340,7 +338,7 @@ namespace ws
 			MYSQL_STMT*					stmt;
 			std::vector<MYSQL_BIND>		paramBind;
 			std::vector<MYSQL_BIND>		resultBind;
-			std::deque<std::string>		paramsBuffer;	//用于储存复制的参数的buffer
+			std::list<std::string>		paramsBuffer;	//用于储存复制的参数的buffer
 		};
 		using DBStatementPtr = std::unique_ptr<DBStatement>;
 
@@ -458,14 +456,13 @@ namespace ws
 		private:
 			struct WorkerThread
 			{
-				bool							isExit = false;
-				std::unique_ptr<std::thread>	thread;
+				bool			isExit = false;
+				std::thread		thread;
 			};
-			using WorkerThreadPtr = std::shared_ptr<WorkerThread>;
 
 			using DBRequestList = std::deque<DBRequestPtr>;
-			DBRequestPtr		getRequest();
-			void				DBWorkThread(WorkerThreadPtr worker);
+			DBRequestPtr				getRequest();
+			void						DBWorkThread(const WorkerThread& worker);
 
 			MySQLConfig					config;
 			std::mutex					workMtx;
@@ -473,8 +470,7 @@ namespace ws
 			size_t						workQueueLength = 0;
 			std::mutex					finishMtx;
 			DBRequestList				finishQueue;
-			std::deque<WorkerThreadPtr>	workerThreads;
+			std::list<WorkerThread>		workerThreads;
 		};
 	}
 }
-#endif
