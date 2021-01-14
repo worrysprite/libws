@@ -217,7 +217,7 @@ void ClientSocket::update()
 void ClientSocket::send(const ByteArray& packet)
 {
 	std::lock_guard<std::mutex> lock(writerMtx);
-	writerBuffer.writeBytes(packet);
+	writerBuffer << packet;
 }
 
 void ClientSocket::send(const void* data, size_t length)

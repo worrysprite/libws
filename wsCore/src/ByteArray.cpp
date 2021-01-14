@@ -50,14 +50,25 @@ namespace ws
 			}
 		}
 
-		ByteArray::ByteArray(ByteArray&& rvalue) noexcept : isAttached(rvalue.isAttached), _readOnly(rvalue._readOnly),
-			_data(rvalue._data), _readPos(rvalue._readPos), _writePos(rvalue._writePos), _capacity(rvalue._capacity)
+		ByteArray& ByteArray::operator=(const ByteArray& other)
 		{
-			rvalue._data = nullptr;
-			rvalue._capacity = 0;
-			rvalue._readPos = rvalue._writePos = 0;
-			rvalue._readOnly = false;
-			rvalue.isAttached = false;
+			isAttached = other.isAttached;
+			_readOnly = other._readOnly;
+			_readPos = other._readPos;
+			_writePos = other._writePos;
+			_capacity = other._capacity;
+			if (isAttached)
+			{
+				_data = other._data;
+			}
+			else
+			{
+				_data = malloc(_capacity);
+				if (!_data)
+					throw std::bad_alloc();
+				memcpy(_data, other._data, _capacity);
+			}
+			return *this;
 		}
 
 		size_t ByteArray::readBytes(ByteArray& outBytes, size_t length /*= 0*/) const
@@ -78,10 +89,9 @@ namespace ws
 
 		size_t ByteArray::readData(void* outData, size_t length) const
 		{
-			if (outData == NULL)
-			{
+			if (!outData)
 				return 0;
-			}
+
 			if (length == 0 || length > readAvailable())
 			{
 				length = readAvailable();
@@ -102,22 +112,11 @@ namespace ws
 			}
 			if (length > 0)
 			{
-				const char* cstr = (const char*)readerPointer();
+				auto cstr = (const char*)readerPointer();
 				_readPos += length;
 				return std::string(cstr, length);
 			}
 			return std::string();
-		}
-
-		const ByteArray& ByteArray::operator>>(std::string& val) const
-		{
-			uint16_t len = readUInt16();
-			if (len && readAvailable() >= len)
-			{
-				val.assign((char*)readerPointer(), len);
-				_readPos += len;
-			}
-			return *this;
 		}
 
 		void ByteArray::expand(size_t size)
@@ -291,11 +290,11 @@ namespace ws
 			}
 		}
 
-		void ByteArray::toHexString(char* dest, size_t length, bool toUpperCase /*= false*/) const
+		std::string ByteArray::toHexString(bool upperCase /*= false*/) const
 		{
-			unsigned char* bytes = (unsigned char*)_data;
+			std::string result(_writePos * 2, '\0');
 			const char* format(nullptr);
-			if (toUpperCase)
+			if (upperCase)
 			{
 				format = "%02X";
 			}
@@ -303,14 +302,17 @@ namespace ws
 			{
 				format = "%02x";
 			}
+			auto bytes = (uint8_t*)_data;
+			auto dest = result.data();
 			for (size_t i = 0; i < _writePos; ++i)
 			{
 				sprintf(dest, format, bytes[i]);
 				dest += 2;
 			}
+			return result;
 		}
 
-		void ByteArray::attach(void* bytes, size_t length, bool copy /*= false*/)
+		void ByteArray::attach(const void* bytes, size_t length, bool copy /*= false*/)
 		{
 			if (!isAttached)
 			{
@@ -326,8 +328,9 @@ namespace ws
 			}
 			else
 			{
-				_data = bytes;
+				_data = const_cast<void*>(bytes);
 				isAttached = true;
+				_readOnly = true;
 			}
 			_capacity = length;
 			_readPos = 0;
@@ -343,5 +346,6 @@ namespace ws
 			std::swap(_writePos, other._writePos);
 			std::swap(_capacity, other._capacity);
 		}
+
 	}
 }

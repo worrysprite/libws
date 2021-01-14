@@ -21,7 +21,34 @@ namespace ws
 			//用一块内存构造，复制或只读
 			ByteArray(const void* bytes, size_t length, bool copy = false);
 			//移动构造
-			ByteArray(ByteArray&& rvalue) noexcept;
+			constexpr ByteArray(ByteArray&& rvalue) noexcept : isAttached(rvalue.isAttached),
+				_readOnly(rvalue._readOnly), _data(rvalue._data), _readPos(rvalue._readPos),
+				_writePos(rvalue._writePos), _capacity(rvalue._capacity)
+			{
+				rvalue._data = nullptr;
+				rvalue._capacity = 0;
+				rvalue._readPos = rvalue._writePos = 0;
+				rvalue._readOnly = false;
+				rvalue.isAttached = false;
+			}
+			//赋值
+			ByteArray& operator=(const ByteArray& other);
+			//移动赋值
+			constexpr ByteArray& operator=(ByteArray&& rvalue) noexcept
+			{
+				isAttached = rvalue.isAttached;
+				_readOnly = rvalue._readOnly;
+				_data = rvalue._data;
+				_readPos = rvalue._readPos;
+				_writePos = rvalue._writePos;
+				_capacity = rvalue._capacity;
+				rvalue._data = nullptr;
+				rvalue._capacity = 0;
+				rvalue._readPos = rvalue._writePos = 0;
+				rvalue._readOnly = false;
+				rvalue.isAttached = false;
+				return *this;
+			}
 
 			virtual ~ByteArray()
 			{
@@ -85,7 +112,7 @@ namespace ws
 			void cutTail(size_t length, ByteArray& out);
 
 			//以为十六进制字符输出
-			void toHexString(char* dest, size_t length, bool upperCase = false) const;
+			std::string toHexString(bool upperCase = false) const;
 
 			//获取管理的内存块
 			inline void* data() { return _data; }
@@ -100,8 +127,13 @@ namespace ws
 			//获取当前写位置的指针
 			inline void* writerPointer() { return (void*)((intptr_t)_data + _writePos); }
 			
-			//附加到一块内存
-			void attach(void* bytes, size_t length, bool copy = false);
+			//附加到一块内存，const且非copy时只读
+			void attach(const void* bytes, size_t length, bool copy = false);
+			void attach(void* bytes, size_t length, bool copy = false)
+			{
+				attach(bytes, length, copy);
+				_readOnly = false;
+			}
 
 			//与另一个ByteArray交换数据
 			void swap(ByteArray& other) noexcept;
@@ -131,34 +163,25 @@ namespace ws
 			float readFloat() const { return readNumber<float>(); }
 			double readDouble() const { return readNumber<double>(); }
 
-			/************************************************************************/
-			/* 将数据读到另一个ByteArray中                                           */
-			/* outBytes	要读入的目标ByteArray，从outBytes末尾写入                     */
-			/* length	要读取的内容大小                                             */
-			/************************************************************************/
+			/**
+			 * @brief 将数据读到另一个ByteArray中
+			 * @param outBytes 要读入的目标ByteArray，从outBytes末尾写入
+			 * @param length 要读取的内容大小
+			 * @return 实际读取的大小
+			*/
 			size_t readBytes(ByteArray& outBytes, size_t length) const;
-			/************************************************************************/
-			/* 将剩余数据全部读到另一个ByteArray中                                    */
-			/* outBytes	要读入的目标ByteArray，从outBytes末尾写入                     */
-			/************************************************************************/
-			size_t readBytes(ByteArray& outBytes) const { return readBytes(outBytes, readAvailable()); }
 
-			/************************************************************************/
-			/* 将数据读到一个内存块中                                                 */
-			/* outBuff	要读到的内存块                                               */
-			/* length	要读取的内容大小                                             */
-			/* return	实际读取的大小                                               */
-			/************************************************************************/
+			/**
+			 * @brief 将数据读到一个内存块中
+			 * @param outData 要读到的内存块
+			 * @param length 要读取的内容大小
+			 * @return 实际读取的大小
+			*/
 			size_t readData(void* outData, size_t length = 0) const;
 
 			//读取length长度的内容作为字符串，若length=0则读完所有剩余内容
 			std::string readString(size_t length) const;
-
-			//先读取一个uint16_t作为字符串长度，再读取该长度的字符串
-			std::string readString() const
-			{
-				return readString(readUInt16());
-			}
+			std::string readString() const { return readString(readUInt16()); }
 
 			template<class T>
 			const ByteArray& operator>>(T& val) const 
@@ -172,46 +195,50 @@ namespace ws
 				return *this;
 			}
 
-			/*const ByteArray& operator>>(int8_t& val) const { return readType(val); }
-			const ByteArray& operator>>(uint8_t& val) const { return readType(val); }
-			const ByteArray& operator>>(int16_t& val) const { return readType(val); }
-			const ByteArray& operator>>(uint16_t& val) const { return readType(val); }
-			const ByteArray& operator>>(int32_t& val) const { return readType(val); }
-			const ByteArray& operator>>(uint32_t& val) const { return readType(val); }
-			const ByteArray& operator>>(int64_t& val) const { return readType(val); }
-			const ByteArray& operator>>(uint64_t& val) const { return readType(val); }
-			const ByteArray& operator>>(float& val) const { return readType(val); }
-			const ByteArray& operator>>(double& val) const { return readType(val); }*/
-
 			//以2字节长度做前缀读取字符串
-			const ByteArray& operator>>(std::string& val) const;
+			const ByteArray& operator>>(std::string& val) const
+			{
+				uint16_t len = readUInt16();
+				if (len && readAvailable() >= len)
+				{
+					val.assign((char*)readerPointer(), len);
+					_readPos += len;
+				}
+				return *this;
+			}
+
+			//把所有剩余可读取内容读入outBytes，从outBytes末尾写入
+			const ByteArray& operator>>(ByteArray& outBytes) const
+			{
+				readBytes(outBytes, readAvailable());
+				return *this;
+			}
 
 			//将capacity扩容到大于size尺寸，不影响内容（可能重新分配内存！）
 			void expand(size_t size);
 
 			//写入一段原始buffer
 			void writeData(const void* inData, size_t length);
-			//把另一个ByteArray的数据拷过来（从writePosition开始写入）
-			void writeBytes(const ByteArray& other)
-			{
-				writeData(other.data(), other.size());
-			}
+
 			//写入length长度的空数据(\0)
 			void writeEmptyData(size_t length);
 
-			//写入指定类型大小的空数据，并返回数据的开头作为类型指针
-			//不会执行构造函数！ByteArray只读则返回nullptr
+			/**
+			 * @brief 在当前写入位置构造一个T类型对象，并返回该对象的指针，只读则返回nullptr
+			 * @tparam T 指定对象的类型
+			 * @return 新构造对象的指针
+			*/
 			template<typename T>
 			T* emplace()
 			{
-				if (readOnly())
-					return nullptr;
-
-				constexpr size_t length = sizeof(T);
-				expand(_writePos + length);
-				auto result = (T*)writerPointer();
-				memset(result, 0, length);
-				_writePos += length;
+				T* result = nullptr;
+				if (!readOnly())
+				{
+					constexpr size_t length = sizeof(T);
+					expand(_writePos + length);
+					result = new (writerPointer())T;
+					_writePos += length;
+				}
 				return result;
 			}
 
@@ -228,17 +255,13 @@ namespace ws
 				return *this;
 			}
 
-			//输入操作符
-			/*ByteArray& operator<<(const int8_t& val) { return writeType(val); }
-			ByteArray& operator<<(const uint8_t& val) { return writeType(val); }
-			ByteArray& operator<<(const int16_t& val) { return writeType(val); }
-			ByteArray& operator<<(const uint16_t& val) { return writeType(val); }
-			ByteArray& operator<<(const int32_t& val) { return writeType(val); }
-			ByteArray& operator<<(const uint32_t& val) { return writeType(val); }
-			ByteArray& operator<<(const int64_t& val) { return writeType(val); }
-			ByteArray& operator<<(const uint64_t& val) { return writeType(val); }
-			ByteArray& operator<<(const float& val) { return writeType(val); }
-			ByteArray& operator<<(const double& val) { return writeType(val); }*/
+			//写入另外一个ByteArray的全部数据
+			ByteArray& operator<<(const ByteArray& other)
+			{
+				writeData(other.data(), other.size());
+				return *this;
+			}
+
 			//以2字节长度做前缀写入字符串
 			ByteArray& operator<<(const std::string& val);
 

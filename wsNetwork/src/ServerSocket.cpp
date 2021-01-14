@@ -31,7 +31,7 @@ void Client::send(const void* data, size_t length)
 void Client::send(const ByteArray& packet)
 {
 	std::lock_guard<std::mutex> lock(writerMtx);
-	writerBuffer.writeBytes(packet);
+	writerBuffer << packet;
 }
 
 //-----------------------windows implements start-------------------------------
