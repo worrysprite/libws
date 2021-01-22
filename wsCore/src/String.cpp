@@ -71,10 +71,13 @@ namespace ws::core::String
 		return true;
 	}
 
-	time_t formatTime(const char* time)
+	time_t formatTime(const std::string& time)
 	{
+		if (time.empty())
+			return 0;
+
 		std::vector<std::string> tmp, dates, times;
-		split(time, " ", tmp);
+		split(time.c_str(), " ", tmp);
 
 		if (tmp[0].find('/') != std::string::npos)
 		{

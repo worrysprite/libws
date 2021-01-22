@@ -138,7 +138,7 @@ namespace ws::core::String
 	/* yyyy/mm/dd hh:mm:ss                                                  */
 	/* yyyy-mm-dd hh:mm:ss                                                  */
 	/************************************************************************/
-	time_t formatTime(const char* time);
+	time_t formatTime(const std::string& time);
 
 	/**
 	 * 将一个unix timestamp转化为时间字符串
