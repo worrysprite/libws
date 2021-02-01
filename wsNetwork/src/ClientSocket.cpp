@@ -35,9 +35,9 @@ bool ClientSocket::initWinsock()
 ClientSocket::~ClientSocket()
 {
 	isExit = true;
-	if (workerThread)
+	if (workerThread.joinable())
 	{
-		workerThread->join();
+		workerThread.join();
 	}
 #ifdef _WIN32
 	WSACleanup();
@@ -159,10 +159,7 @@ void ClientSocket::connect(const std::string& ip, uint16_t port)
 #endif // _WIN32
 		sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	}
-	if (!workerThread)
-	{
-		workerThread = std::make_unique<std::thread>(std::bind(&ClientSocket::workerProc, this));
-	}
+	workerThread = std::thread(&ClientSocket::workerProc, this);
 	switch (status)
 	{
 	case SocketStatus::DISCONNECTED:

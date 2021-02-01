@@ -36,21 +36,12 @@ void Client::send(const ByteArray& packet)
 
 //-----------------------windows implements start-------------------------------
 #ifdef _WIN32
-// main thread
-ServerSocket::ServerSocket() :completionPort(nullptr), lpfnAcceptEx(nullptr),
-	listenSocket(0), numClients(0)
-{
-	
-}
-
 int ServerSocket::processEventThread()
 {
-	DWORD BytesTransferred;
-	LPOVERLAPPED lpOverlapped;
+	DWORD BytesTransferred = 0, numBytes = 0, flags = 0;
+	LPOVERLAPPED lpOverlapped = nullptr;
 	Client* client = nullptr;
 	OverlappedData* ioData = nullptr;
-	DWORD numBytes;
-	DWORD Flags = 0;
 	BOOL bRet = false;
 
 	while (true)
@@ -85,7 +76,7 @@ int ServerSocket::processEventThread()
 				CreateIoCompletionPort((HANDLE)client->socket, completionPort, (ULONG_PTR)client, 0);
 
 				initOverlappedData(*ioData, SocketOperation::RECEIVE);
-				WSARecv(client->socket, &(ioData->wsabuff), 1, &numBytes, &Flags, &(ioData->overlapped), NULL);
+				WSARecv(client->socket, &(ioData->wsabuff), 1, &numBytes, &flags, &(ioData->overlapped), NULL);
 			}
 			else
 			{
@@ -114,7 +105,7 @@ int ServerSocket::processEventThread()
 				writeClientBuffer(*client, ioData->buffer, BytesTransferred);
 				client->hasNewData = true;
 				initOverlappedData(*ioData, SocketOperation::RECEIVE);
-				WSARecv(client->socket, &(ioData->wsabuff), 1, &numBytes, &Flags, &(ioData->overlapped), NULL);
+				WSARecv(client->socket, &(ioData->wsabuff), 1, &numBytes, &flags, &(ioData->overlapped), NULL);
 			}
 			break;
 		}
@@ -178,22 +169,6 @@ bool ServerSocket::startListen()
 		return false;
 	}
 
-	// get number of cores of cpu
-	SYSTEM_INFO mySysInfo;
-	GetSystemInfo(&mySysInfo);
-
-	// create threads to process i/o completion port events
-	std::function<int()> eventProc(std::bind(&ServerSocket::processEventThread, this));
-	DWORD numThreads = config.numIOCPThreads;
-	if (numThreads == 0)
-	{
-		numThreads = mySysInfo.dwNumberOfProcessors * 2;
-	}
-	for (DWORD i = 0; i < numThreads; ++i)
-	{
-		eventThreads.push_back(std::make_unique<std::thread>(eventProc));
-	}
-
 	// create listen socket
 	listenSocket = WSASocketW(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 	// bind listen socket to i/o completion port
@@ -235,6 +210,17 @@ bool ServerSocket::startListen()
 		return false;
 	}
 
+	// create threads to process i/o completion port events
+	auto numThreads = std::thread::hardware_concurrency();
+	if (!numThreads)
+	{
+		numThreads = 1;
+	}
+
+	for (uint32_t i = 0; i < numThreads; ++i)
+	{
+		eventThreads.emplace_back(&ServerSocket::processEventThread, this);
+	}
 	//post acceptEx
 	for (int i = 0; i < NUM_ACCEPTEX; ++i)
 	{
@@ -253,12 +239,12 @@ void ServerSocket::cleanup()
 	}
 	for (auto &th : eventThreads)
 	{
-		th->join();
+		th.join();
 		spdlog::debug("server socket event thread joined");
 	}
 	eventThreads.clear();
 	// disconnect all clients
-	for (auto client : allClients)
+	for (auto &client : allClients)
 	{
 		client.second->isClosing = true;
 		destroyClient(client.second);
@@ -408,10 +394,6 @@ void ServerSocket::writeClientBuffer(Client& client, char* data, size_t size)
 
 //-----------------------linux implements start-------------------------------
 #elif defined(__linux__)
-// main thread
-ServerSocket::ServerSocket() : numClients(0), listenSocket(0),
-	epfd(0), pipe_fd{0,0}, isExit(false) {}
-
 int ServerSocket::processEventThread()
 {
 	epoll_event ev;
@@ -419,7 +401,7 @@ int ServerSocket::processEventThread()
 	epoll_event events[EPOLL_SIZE];
 	sockaddr clientAddr;
 	socklen_t addrlen = sizeof(sockaddr);
-	while (!isExit)
+	while (isRunning)
 	{
 		int eventCount = epoll_wait(epfd, events, EPOLL_SIZE, -1);
 		if (eventCount == -1)
@@ -499,7 +481,7 @@ bool ServerSocket::startListen()
 	srvAddr.sin_port = htons(config.listenPort);
 
 	int optval = 1;
-	if(setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int))!=0)
+	if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int)) != 0)
 	{
 		spdlog::error("setsockopt error. errno={}", errno);
 		return false;
@@ -537,9 +519,9 @@ bool ServerSocket::startListen()
 	ev.data.fd = pipe_fd[0];
 	epoll_ctl(epfd, EPOLL_CTL_ADD, pipe_fd[0], &ev);
 
+	isRunning = true;
 	// create threads to process epoll events
-	std::function<int()> eventProc(std::bind(&ServerSocket::processEventThread, this));
-	eventThread = std::make_unique<std::thread>(eventProc);
+	eventThread = std::thread(&ServerSocket::processEventThread, this);
 	return true;
 }	//end of startListen
 
@@ -547,12 +529,15 @@ bool ServerSocket::startListen()
 void ServerSocket::cleanup()
 {
 	// stop event threads
-	isExit = true;
-	const char exitCode[] = "0";
-	write(pipe_fd[1], exitCode, sizeof(exitCode));
-	eventThread->join();
-	spdlog::debug("server socket event thread joined");
-	eventThread.reset();
+	if (isRunning)
+	{
+		isRunning = false;
+		const char exitCode[] = "0";
+		write(pipe_fd[1], exitCode, sizeof(exitCode));
+		eventThread.join();
+		spdlog::debug("server socket event thread joined");
+	}
+	
 	close(pipe_fd[0]);
 	close(pipe_fd[1]);
 	// disconnect all clients
@@ -658,20 +643,13 @@ void ServerSocket::writeClientBuffer(Client& client, char* data, size_t size)
 }
 
 #elif defined(__APPLE__)
-// main thread
-ServerSocket::ServerSocket() :
-isExit(false), kqfd(0), nextClientID(0), listenSocket(0)
-{
-    
-}
-
 int ServerSocket::processEventThread()
 {
     struct kevent ev_set[3];
     struct kevent events[KEVENT_SIZE];
     sockaddr clientAddr;
     socklen_t addrlen = sizeof(sockaddr);
-    while (!isExit)
+    while (isRunning)
     {
         int eventCount = kevent(kqfd, nullptr, 0, events, KEVENT_SIZE, nullptr);
         if (eventCount == -1)
@@ -802,10 +780,10 @@ bool ServerSocket::startListen()
         spdlog::error("kevent add pipe error.");
         return false;
     }
-    
+
+	isRunning = true;
     // create threads to process epoll events
-    std::function<int()> eventProc(std::bind(&ServerSocket::processEventThread, this));
-	eventThread = std::make_unique<std::thread>(eventProc);
+	eventThread = std::thread(&ServerSocket::processEventThread, this);
     return true;
 }	//end of startListen
 
@@ -813,12 +791,17 @@ bool ServerSocket::startListen()
 void ServerSocket::cleanup()
 {
     // stop event threads
-    isExit = true;
-    const char exitCode[] = "0";
-    write(pipe_fd[1], exitCode, sizeof(exitCode));
-    eventThread->join();
-    spdlog::debug("server socket event thread joined");
-	eventThread.reset();
+	if (isRunning)
+	{
+		isRunning = false;
+		const char exitCode[] = "0";
+		write(pipe_fd[1], exitCode, sizeof(exitCode));
+		if (eventThread.joinable())
+		{
+			eventThread.join();
+		}
+		spdlog::debug("server socket event thread joined");
+	}
     close(pipe_fd[0]);
     close(pipe_fd[1]);
     // disconnect all clients

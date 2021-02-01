@@ -60,29 +60,23 @@ namespace ws
 			bool					isClosing;
 			bool					hasNewData;
 		};
-		typedef std::shared_ptr<Client> ClientPtr;
+		using ClientPtr = std::shared_ptr<Client>;
 
 		struct ServerConfig
 		{
-			ServerConfig() :listenPort(0), maxConnection(0), numIOCPThreads(0), kickTime(0){}
-			std::string								listenAddr;
-			uint16_t								listenPort;
-			uint16_t								maxConnection;
-			uint8_t									numIOCPThreads;
-			uint64_t								kickTime;
-			std::function<ClientPtr()>				createClient;
-			std::function<void(ClientPtr)>			onClientConnected;
-			std::function<void(ClientPtr)>			onClientDestroyed;
+			std::string						listenAddr;
+			uint16_t						listenPort = 0;
+			uint16_t						maxConnection = 0;
+			uint64_t						kickTime = 0;
+			std::function<ClientPtr()>		createClient;
+			std::function<void(ClientPtr)>	onClientConnected;
+			std::function<void(ClientPtr)>	onClientDestroyed;
 		};
 
 		class ServerSocket
 		{
 		public:
-			ServerSocket();
-			virtual ~ServerSocket()
-			{
-				cleanup();
-			}
+			virtual ~ServerSocket() { cleanup(); }
 
 			virtual bool								init(const ServerConfig& cfg);
 			virtual void								update();
@@ -101,8 +95,8 @@ namespace ws
 
 		private:
 			ServerConfig								config;
-			uint16_t									numClients;
-			Socket										listenSocket;
+			uint16_t									numClients = 0;
+			Socket										listenSocket = 0;
 			std::mutex									addMtx;
 			std::list<ClientPtr>						addingClients;
 
@@ -136,14 +130,14 @@ namespace ws
 				Socket acceptSocket;
 			};
 
-			HANDLE completionPort;
-			LPFN_ACCEPTEX lpfnAcceptEx;
+			HANDLE completionPort = nullptr;
+			LPFN_ACCEPTEX lpfnAcceptEx = nullptr;
 
 			ObjectPool<OverlappedData> ioDataPool;
 			std::mutex ioDataPoolMtx;
 
-			std::list<std::unique_ptr<OverlappedData>> ioDataPosted;
-			std::list<std::unique_ptr<std::thread>> eventThreads;
+			std::list<std::unique_ptr<OverlappedData>>	ioDataPosted;
+			std::list<std::thread>						eventThreads;
 
 			bool initWinsock();
 			int postAcceptEx();
@@ -157,18 +151,20 @@ namespace ws
 
 #elif defined(__linux__)
 		private:
-			int epfd, pipe_fd[2];
-			bool isExit;
-			std::unique_ptr<std::thread> eventThread;
+			int				epfd = 0;
+			int				pipe_fd[2] = { 0, 0 };
+			bool			isRunning = false;
+			std::thread		eventThread;
 
 			void readIntoBuffer(Client& client);
 			void writeFromBuffer(Client& client);
 			void writeClientBuffer(Client& client, char* data, size_t size);
 #elif defined(__APPLE__)
         private:
-            int kqfd, pipe_fd[2];
-			bool isExit;
-			std::unique_ptr<std::thread> eventThread;
+			int				kqfd = 0;
+			int				pipe_fd[2] = { 0, 0 };
+			bool			isRunning = false;
+			std::thread		eventThread;
             
             bool setNonBlock(int sockfd);
             void readIntoBuffer(Client& client, uint32_t numBytes);

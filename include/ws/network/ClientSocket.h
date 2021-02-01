@@ -62,7 +62,7 @@ namespace ws
 			SocketStatus					lastStatus = SocketStatus::DISCONNECTED;
 			SocketStatus					status = SocketStatus::DISCONNECTED;
 			Socket							sockfd = 0;
-			std::unique_ptr<std::thread>	workerThread;
+			std::thread						workerThread;
 			bool							isExit = false;
 			uint64_t						lastConnectTime = 0;
 
