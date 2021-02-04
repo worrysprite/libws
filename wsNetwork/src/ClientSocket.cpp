@@ -159,7 +159,7 @@ void ClientSocket::connect(const std::string& ip, uint16_t port)
 #endif // _WIN32
 		sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	}
-	if (workerThread.get_id() == std::thread::id())
+	if (!workerThread.joinable())
 	{
 		workerThread = std::thread(&ClientSocket::workerProc, this);
 	}
