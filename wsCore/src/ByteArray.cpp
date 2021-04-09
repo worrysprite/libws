@@ -1,5 +1,4 @@
 #include "ws/core/ByteArray.h"
-#include <assert.h>
 
 namespace ws
 {
@@ -10,7 +9,7 @@ namespace ws
 		{
 			if (!length)
 			{
-				length = BYTES_DEFAULT_SIZE;
+				_capacity = length = BYTES_DEFAULT_SIZE;
 			}
 			_data = malloc(length);
 			if (!_data)
@@ -312,26 +311,15 @@ namespace ws
 			return result;
 		}
 
-		void ByteArray::attach(const void* bytes, size_t length, bool copy /*= false*/)
+		void ByteArray::attach(const void* data, size_t length)
 		{
 			if (!isAttached)
 			{
 				free(_data);	//先释放之前管理的内存
 			}
-			if (copy)
-			{
-				_data = malloc(length);
-				if (!_data)
-					throw std::bad_alloc();
-				memcpy(_data, bytes, length);
-				isAttached = false;
-			}
-			else
-			{
-				_data = const_cast<void*>(bytes);
-				isAttached = true;
-				_readOnly = true;
-			}
+			_data = const_cast<void*>(data);
+			isAttached = true;
+			_readOnly = true;
 			_capacity = length;
 			_readPos = 0;
 			_writePos = length;
@@ -346,6 +334,5 @@ namespace ws
 			std::swap(_writePos, other._writePos);
 			std::swap(_capacity, other._capacity);
 		}
-
 	}
 }

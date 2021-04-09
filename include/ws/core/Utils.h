@@ -1,13 +1,12 @@
-#ifndef __WS_UTILS_H__
-#define __WS_UTILS_H__
-
+#pragma once
 #include <cstring>
 #include <type_traits>
 #include <memory>
 
+//获取从from字段（包含）到to字段（包含）的大小
 #define GET_FIELD_SIZE(from, to) ((uintptr_t)&to-(uintptr_t)&from+sizeof(to))
+//从from字段到to字段0值初始化
 #define ZERO_INIT(from, to) memset(&from, 0, GET_FIELD_SIZE(from, to))
-
 
 /**
  * 以下模板用于开启强类型枚举的位操作符
@@ -183,6 +182,14 @@ namespace ws::core
 		static std::hash<T> hasher;
 		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
-}
 
-#endif
+	uint32_t nextPowOf2(uint32_t value)
+	{
+		value |= value >> 1;
+		value |= value >> 2;
+		value |= value >> 4;
+		value |= value >> 8;
+		value |= value >> 16;
+		return value + 1;
+	}
+}

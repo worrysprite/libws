@@ -10,6 +10,7 @@
 #include "ws/core/TimeTool.h"
 #include "ws/core/Timer.h"
 #include "ws/core/String.h"
+#include "ws/core/RingBuffer.h"
 
 using namespace ws::core;
 
@@ -239,9 +240,9 @@ bool testAStar()
 		{
 			graph[node->y][node->x + 4] = '*';
 		}
-		for (uint32_t y = 0; y < HEIGHT; ++y)
+		for (auto &y : graph)
 		{
-			std::cout << graph[y] << std::endl;
+			std::cout << y << std::endl;
 		}
 	}
 	else
@@ -385,5 +386,38 @@ bool testString()
 	std::vector<int> nums = { 1, 2, 3, 4, 5, 6 };
 	if (std::string("1,2,3,4,5,6") != String::join(nums, ","))
 		return false;
+	return true;
+}
+
+bool testRingBuffer()
+{
+	RingBuffer ring;
+	auto cap = ring.available();
+	while (ring.used() < cap)	//一直填充到发生扩容
+	{
+		ring << fmt::format("测试：{}", Math::random(1, 999999));
+	}
+	//输出填充的内容
+	while (ring.used())
+	{
+		spdlog::debug(ring.readString());
+	}
+
+	//先输入部分数据
+	ring.truncate(true);
+	cap = cap * 0.7;
+	int num = 0;
+	while (ring.used() < cap)
+	{
+		ring << fmt::format("测试测试测试测试测试测试测试测试测试测试：{}", ++num);
+	}
+
+	++num;
+	//边输入边输出
+	for (int i = 0; i < 10000; ++i)
+	{
+		ring << fmt::format("测试测试测试测试测试测试测试测试测试测试：{}", num + i);
+		spdlog::debug(ring.readString());
+	}
 	return true;
 }

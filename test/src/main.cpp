@@ -12,6 +12,7 @@ extern bool testEnum();
 extern bool testTypeCheck();
 extern bool testDatabase();
 extern bool testString();
+extern bool testRingBuffer();
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 extern bool testPidfile();
 #endif
@@ -28,17 +29,18 @@ int main()
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 	assert(testPidfile());
 #endif
-	assert(testSignal());
-	assert(testEvent());
-	assert(testByteArray());
-	assert(testMath());
-	assert(testTimeTool());
-	assert(testString());
+	//assert(testSignal());
+	//assert(testEvent());
+	//assert(testByteArray());
+	//assert(testMath());
+	//assert(testTimeTool());
+	//assert(testString());
+	assert(testRingBuffer());
 	//assert(testAStar());
-	assert(testEnum());
-	assert(testTypeCheck());
-	assert(testDatabase());
-	assert(testTimer());
+	//assert(testEnum());
+	//assert(testTypeCheck());
+	//assert(testDatabase());
+	//assert(testTimer());
 
 	std::cout << "all tests passed!" << std::endl;
 

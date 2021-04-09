@@ -1,9 +1,8 @@
-#ifndef __WS_CORE_BYTEARRAY_H__
-#define __WS_CORE_BYTEARRAY_H__
-
+#pragma once
 #include <string>
-#include <stdexcept>
 #include <string.h>
+#include <type_traits>
+#include <stdexcept>
 
 namespace ws
 {
@@ -127,13 +126,8 @@ namespace ws
 			//获取当前写位置的指针
 			inline void* writerPointer() { return (void*)((intptr_t)_data + _writePos); }
 			
-			//附加到一块内存，const且非copy时只读
-			void attach(const void* bytes, size_t length, bool copy = false);
-			void attach(void* bytes, size_t length, bool copy = false)
-			{
-				attach(bytes, length, copy);
-				_readOnly = false;
-			}
+			//附加到一块内存，只能用于读数据，不负责释放该内存
+			void attach(const void* data, size_t length);
 
 			//与另一个ByteArray交换数据
 			void swap(ByteArray& other) noexcept;
@@ -279,5 +273,3 @@ namespace ws
 		};
 	}
 }
-
-#endif	//__BYTEARRAY_H__
