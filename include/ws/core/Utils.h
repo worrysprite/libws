@@ -183,7 +183,7 @@ namespace ws::core
 		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
 
-	uint32_t nextPowOf2(uint32_t value)
+	inline uint32_t nextPowOf2(uint32_t value)
 	{
 		value |= value >> 1;
 		value |= value >> 2;
