@@ -74,8 +74,8 @@ namespace ws::core::String
 	}
 
 	//拼接数组里的所有字符串，用glue参数拼接
-	template<template<class ...> class Container>
-	std::string join(const Container<std::string>& input, const char* glue = "")
+	template<template<class ...> class Container, typename ...Args>
+	std::string join(const Container<std::string, Args...>& input, const char* glue = "")
 	{
 		std::string output;	//RVO
 		if (input.empty())

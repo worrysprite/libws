@@ -34,8 +34,8 @@ int main()
 	//assert(testByteArray());
 	//assert(testMath());
 	//assert(testTimeTool());
-	//assert(testString());
-	assert(testRingBuffer());
+	assert(testString());
+	//assert(testRingBuffer());
 	//assert(testAStar());
 	//assert(testEnum());
 	//assert(testTypeCheck());

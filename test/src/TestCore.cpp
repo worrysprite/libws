@@ -382,7 +382,11 @@ bool testString()
 
 	if (teststr != String::join(result1, " "))
 		return false;
-	
+
+	std::list<std::string> strlist{ "5", "4", "3", "2", "1" };
+	if (String::join(strlist, ",") != "5,4,3,2,1")
+		return false;
+
 	std::vector<int> nums = { 1, 2, 3, 4, 5, 6 };
 	if (std::string("1,2,3,4,5,6") != String::join(nums, ","))
 		return false;
