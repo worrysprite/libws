@@ -162,12 +162,18 @@ namespace ws
 				T dy = other.y - y;
 				return sqrt(dx * dx + dy * dy);
 			}
-
+			
 			static double distance(T x1, T y1, T x2, T y2)
 			{
 				T dx = x2 - x1;
 				T dy = y2 - y1;
 				return sqrt(dx * dx + dy * dy);
+			}
+
+			//检查另一个点是否在此点的矩形范围内
+			bool inRectRange(T range, const Vector2D& other)
+			{
+				return abs(x - other.x) <= range && abs(y - other.y) <= range;
 			}
 
 			//获取两向量的夹角

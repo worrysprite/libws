@@ -31,7 +31,7 @@ namespace ws::core
 		}
 		char buf[32] = { 0 };
 		sprintf(buf, "%d\n", lock.l_pid);
-		size_t pidlength = strlen(buf);
+		auto pidlength = (ssize_t)strlen(buf);
 		if (write(fd, buf, pidlength) != pidlength)
 		{
 			close(fd);

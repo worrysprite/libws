@@ -12,24 +12,21 @@ namespace ws
 		public:
 			RingBuffer();
 			//复制构造
-			RingBuffer(const RingBuffer& other)
+			RingBuffer(const RingBuffer& other) : _capacity(other._capacity),
+				_readPos(other._readPos), _writePos(other._writePos)
 			{
-				_capacity = other._capacity;
 				_data = (uint8_t*)malloc(_capacity);
 				if (!_data)
 					throw std::bad_alloc();
 				memcpy(_data, other._data, _capacity);
-				_readPos = other._readPos;
-				_writePos = other._writePos;
 			}
 			
 			//移动构造
 			constexpr RingBuffer(RingBuffer&& rvalue) noexcept : _data(rvalue._data),
-				_readPos(rvalue._readPos), _writePos(rvalue._writePos), _capacity(rvalue._capacity)
+				_capacity(rvalue._capacity), _readPos(rvalue._readPos), _writePos(rvalue._writePos)
 			{
 				rvalue._data = nullptr;
-				rvalue._capacity = 0;
-				rvalue._readPos = rvalue._writePos = 0;
+				rvalue._capacity = rvalue._readPos = rvalue._writePos = 0;
 			}
 			//赋值
 			RingBuffer& operator=(const RingBuffer& other)
