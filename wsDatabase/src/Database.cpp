@@ -62,9 +62,10 @@ Recordset& Recordset::operator>>(ByteArray& value)
 			auto datasize = lengths[fieldIndex];
 			if (datasize > 0)
 			{
-				const char* szRow = mysqlRow[fieldIndex++];
+				const char* szRow = mysqlRow[fieldIndex];
 				value.writeData(szRow, datasize);
 			}
+			++fieldIndex;
 		}
 	}
 	else
@@ -85,10 +86,11 @@ void* Recordset::getBlob(unsigned long& datasize)
 			datasize = field->max_length;
 			if (datasize > 0)
 			{
-				const char* szRow = mysqlRow[fieldIndex++];
+				const char* szRow = mysqlRow[fieldIndex];
 				data = malloc(datasize);
 				memcpy(data, szRow, datasize);
 			}
+			++fieldIndex;
 		}
 	}
 	else
