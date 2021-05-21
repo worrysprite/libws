@@ -237,7 +237,8 @@ namespace ws
 			}
 
 			template<class T>
-			ByteArray& operator<<(const T& val)
+			std::enable_if_t<std::is_trivially_copyable_v<T>, ByteArray&>
+			operator<<(const T& val)
 			{
 				if (readOnly())
 					throw std::runtime_error("read only memory blocks!!");
