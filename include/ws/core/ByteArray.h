@@ -237,7 +237,13 @@ namespace ws
 			}
 
 			template<class T>
+#ifdef _WIN32
 			std::enable_if_t<std::is_trivially_copyable_v<T>, ByteArray&>
+#else
+			//gcc和clang对于std::pair<int, int>类型判定为non-trivially-copyable
+			//https://stackoverflow.com/questions/58283694/why-is-pair-of-const-trivially-copyable-but-pair-is-not
+			ByteArray&
+#endif
 			operator<<(const T& val)
 			{
 				if (readOnly())
