@@ -275,11 +275,16 @@ namespace ws
 				if (resultIndex < numResultFields())
 				{
 					auto& b = resultBind[resultIndex];
-					if (IS_NUM(resultBind[resultIndex].buffer_type))
+					if (IS_NUM(b.buffer_type))
 					{
 						if (*b.is_null)
 						{
 							value = 0;
+						}
+						else if (b.buffer_type == MYSQL_TYPE_DECIMAL ||
+								b.buffer_type == MYSQL_TYPE_NEWDECIMAL)
+						{
+							value = static_cast<T>(std::strtod((const char*)b.buffer, nullptr));
 						}
 						else
 						{
