@@ -1,11 +1,10 @@
-#ifndef __WS_UTILS_TIMER_H__
-#define __WS_UTILS_TIMER_H__
-
+#pragma once
 #include <chrono>
 #include <thread>
 #include <functional>
 #include <mutex>
 #include <forward_list>
+#include <memory>
 
 using namespace std::chrono;
 
@@ -90,5 +89,3 @@ namespace ws
 		};
 	}
 }
-
-#endif
