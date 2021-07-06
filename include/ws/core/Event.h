@@ -1,9 +1,7 @@
-#ifndef __WS_EVENT_H__
-#define __WS_EVENT_H__
-
+#pragma once
 #include <functional>
 #include <unordered_map>
-#include <unordered_set>
+#include <set>
 
 namespace ws
 {
@@ -16,7 +14,7 @@ namespace ws
 			int				type;
 		};
 
-		typedef std::function<void(const Event&)> EventCallback;
+		using EventCallback = std::function<void(const Event&)>;
 
 		struct EventListener
 		{
@@ -37,13 +35,13 @@ namespace ws
 			 * 对于相同的侦听函数只添加一次
 			 * 会覆盖addEventListener添加的侦听回调
 			 */
-			virtual void once(int type, const EventCallback* callback);
+			virtual void once(int type, const EventCallback* callback, int priority = 0);
 			/**
 			 * 添加事件侦听，不需要时必须手动移除侦听
 			 * 对于相同的侦听函数只添加一次
 			 * 会覆盖once添加的侦听回调
 			 */
-			virtual void addEventListener(int type, const EventCallback* callback);
+			virtual void addEventListener(int type, const EventCallback* callback, int priority = 0);
 			/**
 			 * 移除once或addEventListener添加过的事件侦听
 			 */
@@ -53,32 +51,27 @@ namespace ws
 		protected:
 			struct CallbackType
 			{
-				CallbackType(const EventCallback* cb) :
-					callback(cb), once(false) {}
-
 				//只要回调函数相同就判定相同
 				bool operator==(const CallbackType& other) const
 				{
 					return callback == other.callback;
 				}
 
-				struct hash
+				bool operator<(const CallbackType& other) const
 				{
-					//以回调函数作为hash
-					size_t operator()(const CallbackType& cb) const
+					if (priority == other.priority)
 					{
-						static std::hash<const void*> ptrHash;
-						return ptrHash(cb.callback);
+						return callback < other.callback;
 					}
-				};
+					return priority > other.priority;
+				}
 
-				const EventCallback* callback;
-				bool once;
+				const EventCallback* callback = nullptr;
+				int priority = 0;
+				bool once = false;
 			};
 
-			std::unordered_map<int, std::unordered_set<CallbackType, CallbackType::hash>> listeners;
+			std::unordered_map<int, std::set<CallbackType>> listeners;
 		};
 	}
 }
-
-#endif
