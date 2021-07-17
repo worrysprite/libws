@@ -12,7 +12,7 @@
 
 /**
  * 以下模板用于开启强类型枚举的位操作符
- * @see http://blog.bitwigglers.org/using-enum-classes-as-type-safe-bitmasks/ 
+ * @see http://blog.bitwigglers.org/using-enum-classes-as-type-safe-bitmasks/
  */
 template<typename Enum>
 struct EnableBitMaskOperators {};
@@ -175,7 +175,7 @@ namespace ws::core
 	constexpr int16_t operator "" i16(unsigned long long i) { return (int16_t)i; }
 	constexpr uint16_t operator "" ui16(unsigned long long i) { return (uint16_t)i; }
 #pragma GCC diagnostic pop
-	
+
 #endif
 
 	// from boost hash_combine
@@ -199,6 +199,11 @@ namespace ws::core
 	//获取十进制数字的位数
 	uint32_t getNumDigitsOfDemical(uint32_t value);
 
-	//获取调用堆栈
+	/**
+	 * 获取调用堆栈，支持windows和linux
+	 * windows 需要链接DbgHelp.lib
+	 * linux 需要添加-rdynamic编译选项，需要链接-ldl
+	 * @param skip 跳过堆栈帧数，默认跳过本函数
+	 */
 	std::vector<std::string> callstack(int skip = 1);
 }

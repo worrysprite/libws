@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <execinfo.h>
+#include <cxxabi.h>
+#include <dlfcn.h>
 #endif
 
 namespace ws::core
@@ -29,7 +31,7 @@ namespace ws::core
 		lock.l_whence = SEEK_SET;
 		lock.l_start = 0;
 		lock.l_len = 0;
-        lock.l_pid = getpid();
+		lock.l_pid = getpid();
 		if (fcntl(fd, F_SETLK, &lock))
 		{
 			close(fd);
@@ -76,8 +78,10 @@ namespace ws::core
 
 	std::vector<std::string> callstack(int skip)
 	{
+		constexpr int MAX_STACK = 128;
+		void* stack[MAX_STACK] = { 0 };
+
 #ifdef _WIN32
-		constexpr int MAX_STACK = 300;
 		//创建一块buffer用于保存符号信息
 		char buffer[sizeof(SYMBOL_INFO) + sizeof(char) * MAX_SYM_NAME];
 		SYMBOL_INFO* symbol = (SYMBOL_INFO*)buffer;
@@ -85,7 +89,6 @@ namespace ws::core
 		symbol->MaxNameLen = MAX_SYM_NAME;
 
 		//获取堆栈帧
-		void* stack[MAX_STACK];
 		HANDLE process = GetCurrentProcess();
 		SymInitialize(process, NULL, TRUE);
 		int numFrames = CaptureStackBackTrace(skip, MAX_STACK, stack, NULL);
@@ -95,7 +98,9 @@ namespace ws::core
 
 		std::vector<std::string> result(numFrames + 1);
 		result[0] = fmt::format("Thread {:#x}", std::hash<std::thread::id>{}(std::this_thread::get_id()));
-		auto format = fmt::format("{}{}{}", "#{:<", getNumDigitsOfDemical(numFrames), "} {:#016x} in {} at {}:{}");
+		std::string format{ "[{:<" };
+		format += std::to_string(getNumDigitsOfDemical(numFrames));
+		format += "}] {:#016x} in {} at {}:{}";
 		for (int i = 0; i < numFrames; ++i)
 		{
 			SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
@@ -106,31 +111,35 @@ namespace ws::core
 		return result;
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 		// must compile with -rdynamic
-		void* stack_trace[20] = { 0 };
-		char** stack_strings = NULL;
-		int stack_depth = 0;
-		int i = 0;
-
 		// 获取栈中各层调用函数地址
-		stack_depth = backtrace(stack_trace, 20);
+		int numFrames = backtrace(stack, MAX_STACK);
 		std::vector<std::string> result;
+		result.reserve(numFrames);
 
-		// 查找符号表将函数调用地址转换为函数名称
-		stack_strings = (char**)backtrace_symbols(stack_trace, stack_depth);
-		if (NULL == stack_strings) {
-			printf(" Memory is not enough while dump Stack Trace! \r\n");
-			return result;
+		//获取堆栈符号信息
+		Dl_info info;
+		result.push_back(fmt::format("Thread {:#x}", std::hash<std::thread::id>{}(std::this_thread::get_id())));
+		std::string format{ "[{:<" };
+		format += std::to_string(getNumDigitsOfDemical(numFrames));
+		format += "}] {:#016x} in {} at {}";
+		for (int i = skip; i < numFrames; ++i)
+		{
+			if (dladdr(stack[i], &info))
+			{
+				if (auto demangled = abi::__cxa_demangle(info.dli_sname, nullptr, nullptr, nullptr))
+				{
+					result.push_back(fmt::format(format, i - skip, (uint64_t)stack[i], demangled, info.dli_fname));
+					free(demangled);
+					continue;
+				}
+			}
+
+			if (!info.dli_sname)
+				info.dli_sname = "??";
+			if (!info.dli_fname)
+				info.dli_fname = "??";
+			result.push_back(fmt::format(format, i - skip, (uint64_t)stack[i], info.dli_sname, info.dli_fname));
 		}
-
-		// 打印调用栈
-		printf(" Stack Trace: \r\n");
-		for (i = 0; i < stack_depth; ++i) {
-			printf(" [%d] %s \r\n", i, stack_strings[i]);
-		}
-
-		// 获取函数名称时申请的内存需要自行释放
-		free(stack_strings);
-		stack_strings = NULL;
 		return result;
 #endif
 	}

@@ -119,9 +119,9 @@ bool testByteArray()
 		(int)ts2.u8 << std::endl <<
 		ts2.i16 << std::endl <<
 		ts2.u16 << std::endl <<
-		ts2.i32 << std::endl << 
-		ts2.u32 << std::endl << 
-		ts2.i64 << std::endl << 
+		ts2.i32 << std::endl <<
+		ts2.u32 << std::endl <<
+		ts2.i64 << std::endl <<
 		ts2.u64 << std::endl;
 
 	ByteArray b2;
@@ -240,7 +240,7 @@ bool testAStar()
 		{
 			graph[node->y][node->x + 4] = '*';
 		}
-		for (auto &y : graph)
+		for (auto& y : graph)
 		{
 			std::cout << y << std::endl;
 		}
@@ -301,9 +301,9 @@ bool testTypeCheck()
 	std::cout << std::boolalpha << is_smart_ptr<std::shared_ptr<int>>::value << std::endl;
 	std::cout << std::boolalpha << is_smart_ptr<decltype(a)>::value << std::endl;
 
- 	std::cout << std::boolalpha << is_smart_ptr<std::string>::value << std::endl;
- 	std::cout << std::boolalpha << is_smart_ptr<std::unique_ptr<std::string>>::value << std::endl;
- 	std::cout << std::boolalpha << is_smart_ptr<decltype(b)>::value << std::endl;
+	std::cout << std::boolalpha << is_smart_ptr<std::string>::value << std::endl;
+	std::cout << std::boolalpha << is_smart_ptr<std::unique_ptr<std::string>>::value << std::endl;
+	std::cout << std::boolalpha << is_smart_ptr<decltype(b)>::value << std::endl;
 
 	std::cout << std::endl;
 	return true;
@@ -312,13 +312,13 @@ bool testTypeCheck()
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 bool testPidfile()
 {
-    static const char PID_FILE[] = "/var/run/test.pid";
-    if (createPidfile(PID_FILE))
-    {
-        std::cout << "lock pidfile success!" << std::endl;
-        return true;
-    }
-    return false;
+	static const char PID_FILE[] = "/var/run/test.pid";
+	if (createPidfile(PID_FILE))
+	{
+		std::cout << "lock pidfile success!" << std::endl;
+		return true;
+	}
+	return false;
 }
 #endif
 
@@ -426,21 +426,21 @@ bool testRingBuffer()
 	return true;
 }
 
+struct cstest
+{
+	int hello(int val)
+	{
+		auto stacks = callstack();
+		for (auto& str : stacks)
+		{
+			spdlog::debug(str);
+		}
+		return val;
+	}
+};
+
 bool testCallstack()
 {
-	struct cstest
-	{
-		int hello(int val)
-		{
-			auto stacks = callstack();
-			for (auto& str : stacks)
-			{
-				spdlog::debug(str);
-			}
-			return val;
-		}
-	};
-
 	return [](int val)
 	{
 		cstest t;
