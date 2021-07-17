@@ -425,3 +425,25 @@ bool testRingBuffer()
 	}
 	return true;
 }
+
+bool testCallstack()
+{
+	struct cstest
+	{
+		int hello(int val)
+		{
+			auto stacks = callstack();
+			for (auto& str : stacks)
+			{
+				spdlog::debug(str);
+			}
+			return val;
+		}
+	};
+
+	return [](int val)
+	{
+		cstest t;
+		return t.hello(val);
+	}(666) == 666;
+}

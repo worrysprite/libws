@@ -13,6 +13,7 @@ extern bool testTypeCheck();
 extern bool testDatabase();
 extern bool testString();
 extern bool testRingBuffer();
+extern bool testCallstack();
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 extern bool testPidfile();
 #endif
@@ -41,6 +42,7 @@ int main()
 	//assert(testTypeCheck());
 	//assert(testDatabase());
 	//assert(testTimer());
+	assert(testCallstack());
 
 	std::cout << "all tests passed!" << std::endl;
 

@@ -2,6 +2,8 @@
 #include <cstring>
 #include <type_traits>
 #include <memory>
+#include <string>
+#include <vector>
 
 //获取从from字段（包含）到to字段（包含）的大小
 #define GET_FIELD_SIZE(from, to) ((uintptr_t)&to-(uintptr_t)&from+sizeof(to))
@@ -183,6 +185,7 @@ namespace ws::core
 		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
 
+	//获取value的下一个2的n次幂
 	inline uint32_t nextPowOf2(uint32_t value)
 	{
 		value |= value >> 1;
@@ -192,4 +195,10 @@ namespace ws::core
 		value |= value >> 16;
 		return value + 1;
 	}
+
+	//获取十进制数字的位数
+	uint32_t getNumDigitsOfDemical(uint32_t value);
+
+	//获取调用堆栈
+	std::vector<std::string> callstack(int skip = 1);
 }
