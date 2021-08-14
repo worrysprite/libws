@@ -178,7 +178,14 @@ namespace ws
 			std::string readString() const { return readString(readUInt16()); }
 
 			template<class T>
-			const ByteArray& operator>>(T& val) const 
+#ifdef _WIN32
+			std::enable_if_t<std::is_trivially_copyable_v<T>, const ByteArray&>
+#else
+			//gcc和clang对于std::pair<int, int>类型判定为non-trivially-copyable
+			//https://stackoverflow.com/questions/58283694/why-is-pair-of-const-trivially-copyable-but-pair-is-not
+			const ByteArray&
+#endif
+			operator>>(T& val) const 
 			{
 				constexpr auto typeSize = sizeof(T);
 				if (typeSize <= readAvailable())
