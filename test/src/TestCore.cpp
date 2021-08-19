@@ -173,6 +173,8 @@ bool testMath()
 bool testTimeTool()
 {
 	std::cout << "timezone offset: " << TimeTool::getTimeZoneOffset() << std::endl;
+	std::cout << "day of week: " << TimeTool::getDayOfWeek() << std::endl;
+	std::cout << "day of month: " << TimeTool::getDayOfMonth() << std::endl;
 	return true;
 }
 

@@ -127,9 +127,21 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 				return diff > 24 * 3600000;
 			}
 
-			//获取当前时间在本月的第N天
-			inline uint8_t getDayofMonth(uint64_t time)
+			//获取当前时间在本周的第N天（0-6）0=Sunday
+			inline int getDayOfWeek(uint64_t time = 0)
 			{
+				if (!time)
+					time = getSystemTime();
+				tm date = { 0 };
+				LocalTime(time / 1000, date);
+				return date.tm_wday;
+			}
+
+			//获取当前时间在本月的第N天（1-31）
+			inline int getDayOfMonth(uint64_t time = 0)
+			{
+				if (!time)
+					time = getSystemTime();
 				tm date = {0};
 				LocalTime(time / 1000, date);
 				return date.tm_mday;

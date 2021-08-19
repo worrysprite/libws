@@ -34,15 +34,15 @@ int main()
 	//assert(testEvent());
 	//assert(testByteArray());
 	//assert(testMath());
-	//assert(testTimeTool());
-	assert(testString());
+	assert(testTimeTool());
+	//assert(testString());
 	//assert(testRingBuffer());
 	//assert(testAStar());
 	//assert(testEnum());
 	//assert(testTypeCheck());
 	//assert(testDatabase());
 	//assert(testTimer());
-	assert(testCallstack());
+	//assert(testCallstack());
 
 	std::cout << "all tests passed!" << std::endl;
 
