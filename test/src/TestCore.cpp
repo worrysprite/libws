@@ -112,6 +112,7 @@ bool testByteArray()
 	ByteArray bytes;
 	bytes << ts1.i8 << ts1.u8 << ts1.i16 << ts1.u16 << ts1.i32 << ts1.u32 << ts1.i64 << ts1.u64;
 	std::cout << "sizeof bytes: " << bytes.size() << std::endl;
+	std::cout << "hex: " << bytes.toHexString() << std::endl;
 
 	bytes >> ts2;
 	std::cout << "unpack data: " << std::endl <<
@@ -124,10 +125,11 @@ bool testByteArray()
 		ts2.i64 << std::endl <<
 		ts2.u64 << std::endl;
 
-	ByteArray b2;
+	ByteArray b2, b3;
 	b2.swap(bytes);
 
-	std::cout << "sizeof bytes: " << bytes.size() << "sizeof byte2: " << b2.size() << std::endl;
+	std::cout << "sizeof bytes after swap: " << bytes.size() << std::endl << std::endl;
+	std::cout << "sizeof byte2: " << b2.size() << std::endl;
 	b2.readPosition(0);
 	b2 >> ts2;
 	std::cout << "unpack data: " << std::endl <<
@@ -143,6 +145,13 @@ bool testByteArray()
 	b2.seek(-8);
 	std::cout << "last 8 bytes data:" << b2.readUInt64() << std::endl;
 	std::cout << std::endl;
+
+	b3 = std::move(b2);	//move assign
+	if (b2.data() != nullptr)
+	{
+		return false;
+	}
+	std::cout << b3.toHexString(true) << std::endl;
 	return true;
 }
 

@@ -35,6 +35,7 @@ namespace ws
 			//移动赋值
 			constexpr ByteArray& operator=(ByteArray&& rvalue) noexcept
 			{
+				if (!isAttached) free(_data);
 				isAttached = rvalue.isAttached;
 				_readOnly = rvalue._readOnly;
 				_data = rvalue._data;

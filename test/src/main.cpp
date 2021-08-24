@@ -22,7 +22,7 @@ extern bool testTimer();
 int main()
 {
 #if _WIN32 && _DEBUG
-	system("chcp 65001");
+	SetConsoleOutputCP(CP_UTF8);
 #endif
 	spdlog::set_level(spdlog::level::debug);
 	spdlog::set_pattern("[%Y/%m/%d %H:%M:%S.%e] %^[%l] %v%$");
@@ -32,9 +32,9 @@ int main()
 #endif
 	//assert(testSignal());
 	//assert(testEvent());
-	//assert(testByteArray());
+	assert(testByteArray());
 	//assert(testMath());
-	assert(testTimeTool());
+	//assert(testTimeTool());
 	//assert(testString());
 	//assert(testRingBuffer());
 	//assert(testAStar());
