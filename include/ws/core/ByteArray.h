@@ -174,7 +174,7 @@ namespace ws
 			*/
 			size_t readData(void* outData, size_t length = 0) const;
 
-			//读取length长度的内容作为字符串，若length=0则读完所有剩余内容
+			//读取length长度的内容作为字符串
 			std::string readString(size_t length) const;
 			std::string readString() const { return readString(readUInt16()); }
 

@@ -105,7 +105,7 @@ namespace ws
 
 		std::string ByteArray::readString(size_t length) const
 		{
-			if (length == 0 || length > readAvailable())
+			if (length > readAvailable())
 			{
 				length = readAvailable();
 			}
