@@ -1,3 +1,4 @@
+#include <charconv>
 #include "ws/core/ByteArray.h"
 
 namespace ws
@@ -123,7 +124,7 @@ namespace ws
 			size_t newCap = _capacity;
 			while (size > newCap)
 			{
-				newCap *= 2;
+				newCap = newCap << 1;
 			}
 			if (newCap != _capacity)
 			{
@@ -174,6 +175,7 @@ namespace ws
 					_data = malloc(resetSize);
 					if (!_data)
 						throw std::bad_alloc();
+					_capacity = resetSize;
 				}
 			}
 #ifdef _DEBUG
@@ -309,6 +311,23 @@ namespace ws
 				dest += 2;
 			}
 			return result;
+		}
+
+		bool ByteArray::fromHexString(const std::string_view& hexStr)
+		{
+			auto length = hexStr.size();
+			if (length % 2 != 0)
+				return false;
+
+			truncate(length >> 1);
+			auto byte = (uint8_t*)_data;
+			for (size_t i = 0; i < length; i += 2)
+			{
+				if (std::errc() != std::from_chars(hexStr.data() + i, hexStr.data() + i + 2, *byte++, 16).ec)
+					return false;
+			}
+			_writePos = length >> 1;
+			return true;
 		}
 
 		void ByteArray::attach(const void* data, size_t length)

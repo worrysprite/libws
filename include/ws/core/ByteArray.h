@@ -113,6 +113,8 @@ namespace ws
 
 			//以为十六进制字符输出
 			std::string toHexString(bool upperCase = false) const;
+			//从16进制字符串转化为内容，会覆盖已有数据，返回是否成功转化
+			bool fromHexString(const std::string_view& hexStr);
 
 			//获取管理的内存块
 			inline void* data() { return _data; }
