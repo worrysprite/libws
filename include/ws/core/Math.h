@@ -5,6 +5,7 @@
 #include <random>
 #include <math.h>
 #include <algorithm>
+#include <chrono>
 
 #ifdef _WIN32
 #pragma warning(disable:26451)
@@ -18,9 +19,9 @@ namespace ws
 		class Math
 		{
 		public:
-			static const double PI;
-			static const double HALF_PI;
-			static const double RAD_PER_ANGLE;
+			static constexpr double PI = 3.14159265358979323846;
+			static constexpr double HALF_PI = PI * 0.5;
+			static constexpr double RAD_PER_ANGLE = 0.01745329251994329577;
 
 			/************************************************************************/
 			/* 产生一个在[0,1)区间的随机浮点数                                        */
@@ -48,7 +49,7 @@ namespace ws
 
 		private:
 			//std::mt19937::tempering_d
-			static std::mt19937							randomGenerator;
+			inline static std::mt19937 randomGenerator = std::mt19937((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
 		};
 
 		template<typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
@@ -179,9 +180,7 @@ namespace ws
 			//获取两向量的夹角
 			static double angleBetween(Vector2D v1, Vector2D v2)
 			{
-				v1.normalize();
-				v2.normalize();
-				return acos(v1.dotProduct(v2));
+				return acos(v1.dotProduct(v2) / (v1.getLength() * v2.getLength()));
 			}
 		};
 
