@@ -151,7 +151,6 @@
     <ClCompile Include="src\AStar.cpp" />
     <ClCompile Include="src\ByteArray.cpp" />
     <ClCompile Include="src\Event.cpp" />
-    <ClCompile Include="src\Math.cpp" />
     <ClCompile Include="src\Profiler.cpp" />
     <ClCompile Include="src\RingBuffer.cpp" />
     <ClCompile Include="src\String.cpp" />

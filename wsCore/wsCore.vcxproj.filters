@@ -12,9 +12,6 @@
     <ClCompile Include="src\ByteArray.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Math.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\Profiler.cpp">
       <Filter>src</Filter>
     </ClCompile>
