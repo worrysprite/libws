@@ -436,6 +436,7 @@ namespace ws
 		class DBQueue
 		{
 		public:
+			DBQueue() {}
 			DBQueue(const MySQLConfig& cfg) : config(cfg) {}
 			virtual ~DBQueue();
 
