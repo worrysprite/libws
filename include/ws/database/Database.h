@@ -19,10 +19,10 @@ namespace ws
 	{
 		struct MySQLConfig
 		{
-			MySQLConfig() : port(3306), autoCommit(true), host("localhost"),
-				user("root"), characterset("utf8mb4") {}
-			uint16_t		port;
-			bool			autoCommit;
+			MySQLConfig() : host("localhost"), user("root"), characterset("utf8mb4") {}
+			uint16_t		port = 3306;
+			bool			autoCommit = true;
+			uint32_t		maxStmtCache = -1;	//语句缓存上限
 			std::string		host;
 			std::string		user;
 			std::string		password;
@@ -335,15 +335,16 @@ namespace ws
 			inline const std::string& sql() const { return _sql; }
 
 		private:
-			uint32_t					paramIndex = 0;
-			uint32_t					resultIndex = 0;
-			my_ulonglong				_numRows = 0;
-			my_ulonglong				_lastInsertId = 0;
-			std::string					_sql;
-			MYSQL_STMT*					stmt;
-			std::vector<MYSQL_BIND>		paramBind;
-			std::vector<MYSQL_BIND>		resultBind;
-			std::list<std::string>		paramsBuffer;	//用于储存复制的参数的buffer
+			uint32_t								paramIndex = 0;
+			uint32_t								resultIndex = 0;
+			my_ulonglong							_numRows = 0;
+			my_ulonglong							_lastInsertId = 0;
+			MYSQL_STMT*								stmt;
+			std::chrono::steady_clock::time_point	lastUseTime;
+			std::string								_sql;
+			std::vector<MYSQL_BIND>					paramBind;
+			std::vector<MYSQL_BIND>					resultBind;
+			std::list<std::string>					paramsBuffer;	//用于储存复制的参数的buffer
 		};
 		using DBStatementPtr = std::unique_ptr<DBStatement>;
 
@@ -366,8 +367,8 @@ namespace ws
 			/* init db connection                                                   */
 			/************************************************************************/
 			void setDBConfig(const MySQLConfig& config);
-			bool logon();
-			void logoff();
+			bool logon();	//连接mysql服务端
+			void logoff();	//断开mysql服务端
 
 			//更换db
 			bool changeDatabase(const std::string& db);
@@ -395,9 +396,15 @@ namespace ws
 			//上次查询结果集
 			inline RecordsetPtr getLastRecord() { return std::move(lastRecords); }
 
-			//准备一个DBStatement供查询，并将其缓存起来，提高以后查询效率
-			//若语句有语法问题则返回null
+			/**
+			 * @brief 准备一个DBStatement供查询并缓存，可防注入并提高查询效率
+			 * @param sql 要查询的语句，变量用占位符?填充
+			 * @return 返回准备好的语句指针，出错返回nullptr
+			*/
 			DBStatement* prepare(const std::string& sql);
+
+			//已缓存的DBStatement数量
+			inline size_t cacheSize() const { return stmtCache.size(); }
 
 			//释放已缓存的DBStatement
 			inline void freeStatement(const std::string& sql)
@@ -405,22 +412,25 @@ namespace ws
 				stmtCache.erase(sql);
 			}
 
+			//清空已缓存的DBStatement
+			inline void clearCache() { stmtCache.clear(); }
+
 			/**
 			 * 执行一个sql语句，返回是否成功
 			 * 用getResultRows获取查询结果行数
 			 * 用getLastRecord获取查询结果内容
 			 * 用getAffectedRows获取影响行数（insert,update,delete等语句）
-			 * 若字符串包含多条语句，需要用nextStatement()获取下个语句的结果
+			 * 若字符串包含多条语句，需要用nextRecordset()获取下个语句的结果
 			 */
 			bool query(const std::string& strSQL);
 
 			//获取下一个结果集，返回是否有结果集
 			bool nextRecordset();
 
-			//提交事务
-			bool commit() { return mysql_commit(mysql); }
-			//回滚事务
-			bool rollback() { return mysql_rollback(mysql); }
+			//提交事务，返回是否成功
+			bool commit() { return !mysql_commit(mysql); }
+			//回滚事务，返回是否成功
+			bool rollback() { return !mysql_rollback(mysql); }
 
 		protected:
 			MySQLConfig										dbConfig;

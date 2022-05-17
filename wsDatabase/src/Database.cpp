@@ -4,6 +4,7 @@
 #include <iostream>
 #include <functional>
 #include <chrono>
+#include <map>
 
 using namespace ws::database;
 using namespace std::chrono;
@@ -462,16 +463,12 @@ void Database::logoff()
 
 bool Database::changeDatabase(const std::string& db)
 {
-	dbConfig.database = db;
-	if (mysql)
+	if (mysql && !mysql_select_db(mysql, db.c_str()))
 	{
-		if (mysql_select_db(mysql, db.c_str()))
-		{
-			spdlog::error("Change db failed! db={}", db);
-			return false;
-		}
+		dbConfig.database = db;
 		return true;
 	}
+	spdlog::error("Change db failed! db={}", db);
 	return false;
 }
 
@@ -494,8 +491,24 @@ DBStatement* Database::prepare(const std::string& sql)
 			return nullptr;
 		}
 
+		if (stmtCache.size() >= dbConfig.maxStmtCache)
+		{
+			std::map<std::chrono::steady_clock::time_point, decltype(stmtCache)::iterator> sortedMap;
+			for (auto iter = stmtCache.begin(); iter != stmtCache.end(); ++iter)
+			{
+				sortedMap.emplace(iter->second->lastUseTime, iter);
+			}
+			auto iter = sortedMap.begin();
+			for (uint32_t i = 0; i < dbConfig.maxStmtCache >> 1; ++i)
+			{
+				stmtCache.erase(iter->second);
+				++iter;
+			}
+		}
+
 		dbStmt = new DBStatement(sql, stmt);
-		stmtCache.insert(std::make_pair(sql, std::unique_ptr<DBStatement>(dbStmt)));
+		dbStmt->lastUseTime = std::chrono::steady_clock::now();
+		stmtCache.emplace(sql, DBStatementPtr(dbStmt));
 	}
 	return dbStmt;
 }
