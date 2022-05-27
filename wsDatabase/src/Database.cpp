@@ -479,6 +479,7 @@ DBStatement* Database::prepare(const std::string& sql)
 	if (iter != stmtCache.end())
 	{
 		dbStmt = iter->second.get();
+		dbStmt->lastUseTime = std::chrono::steady_clock::now();
 		dbStmt->clear();
 	}
 	else
