@@ -136,7 +136,7 @@ namespace ws::core::String
 	bool isPrintableString(const char* str);
 
 	/**
-	 * 将一个unix timestamp转化为时间字符串
+	 * 将一个时间字符串格式化为unix timestamp
 	 * 指定格式详见get_time
 	 * @see https://zh.cppreference.com/w/cpp/io/manip/get_time
 	 */

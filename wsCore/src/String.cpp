@@ -91,7 +91,7 @@ namespace ws::core::String
 		if (time.empty())
 			return 0;
 
-		constexpr const char* supportedFormats[] = { "%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S" };
+		constexpr const char* supportedFormats[] = { "%Y-%m-%d %T", "%Y/%m/%d %T" };
 		constexpr int numFormats = sizeof(supportedFormats) / sizeof(supportedFormats[0]);
 
 		for (int i = 0; i < numFormats; ++i)
