@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <sstream>
 #include <vector>
+#include <iomanip>
 #include "ws/core/String.h"
 #include "ws/core/Math.h"
 
@@ -71,45 +72,35 @@ namespace ws::core::String
 		return true;
 	}
 
+	time_t formatTime(const std::string& time, const char* format)
+	{
+		if (time.empty())
+			return 0;
+
+		struct tm tm;
+		std::stringstream ss(time);
+		ss >> std::get_time(&tm, format);
+		if (ss.fail())
+			return 0;
+
+		return mktime(&tm);
+	}
+
 	time_t formatTime(const std::string& time)
 	{
 		if (time.empty())
 			return 0;
 
-		std::vector<std::string> tmp, dates, times;
-		split(time.c_str(), " ", tmp);
+		constexpr const char* supportedFormats[] = { "%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S" };
+		constexpr int numFormats = sizeof(supportedFormats) / sizeof(supportedFormats[0]);
 
-		if (tmp[0].find('/') != std::string::npos)
+		for (int i = 0; i < numFormats; ++i)
 		{
-			split(tmp[0].c_str(), "/", dates);
+			time_t t = formatTime(time, supportedFormats[i]);
+			if (t != 0)
+				return t;
 		}
-		else if (tmp[0].find('-') != std::string::npos)
-		{
-			split(tmp[0].c_str(), "-", dates);
-		}
-		if (dates.size() != 3)
-		{
-			return 0;	//invalid format
-		}
-		if (tmp.size() > 1)
-		{
-			split(tmp[1].c_str(), ":", times);
-			if (times.size() != 3)
-			{
-				return 0;	//invalid format
-			}
-		}
-		tm result = { 0 };
-		result.tm_year = atoi(dates[0].c_str()) - 1900;
-		result.tm_mon = atoi(dates[1].c_str()) - 1;
-		result.tm_mday = atoi(dates[2].c_str());
-		if (!times.empty())
-		{
-			result.tm_hour = atoi(times[0].c_str());
-			result.tm_min = atoi(times[1].c_str());
-			result.tm_sec = atoi(times[2].c_str());
-		}
-		return mktime(&result);
+		return 0;
 	}
 
 	std::string formatTime(time_t time, const char* format)
@@ -138,7 +129,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 	}
 
 	static const char HEX_DIGIT[] = "0123456789ABCDEF";
-	
+
 	std::string bin2Hex(const uint8_t* input, size_t length)
 	{
 		std::string result;
@@ -166,7 +157,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 		for (size_t i = 0; i < length; ++i)
 		{
 			auto c = input[i];
-			if (isalnum(c) || c == '-' || c == '_' || c =='.' || c == '~')
+			if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
 			{
 				result += c;
 			}

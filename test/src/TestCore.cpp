@@ -408,7 +408,13 @@ bool testString()
 	std::vector<int> nums = { 1, 2, 3, 4, 5, 6 };
 	if (std::string("1,2,3,4,5,6") != String::join(nums, ","))
 		return false;
-	return true;
+
+	auto now = time(nullptr);
+	auto timeStr = String::formatTime(now, "%F %T");
+	if (now != String::formatTime(timeStr))
+		return false;
+
+	return 12005313033 == String::formatTime("2350/6/8 17:10:33");
 }
 
 bool testRingBuffer()

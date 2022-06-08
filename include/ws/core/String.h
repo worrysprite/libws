@@ -128,16 +128,24 @@ namespace ws::core::String
 	//字符串转大写
 	void toUppercase(char* str);
 
-	/************************************************************************/
-	/* 检测字符串是否为可打印ASCII码                                          */
-	/************************************************************************/
+	/**
+	 * @brief 检测字符串是否为可打印ASCII字符串
+	 * @param str 要检测的字符串
+	 * @return 是否为可打印字符串
+	*/
 	bool isPrintableString(const char* str);
 
-	/************************************************************************/
-	/* 将一个时间字符串格式化为unix timestamp，支持以下格式                    */
-	/* yyyy/mm/dd hh:mm:ss                                                  */
-	/* yyyy-mm-dd hh:mm:ss                                                  */
-	/************************************************************************/
+	/**
+	 * 将一个unix timestamp转化为时间字符串
+	 * 指定格式详见get_time
+	 * @see https://zh.cppreference.com/w/cpp/io/manip/get_time
+	 */
+	time_t formatTime(const std::string& time, const char* format);
+	/**
+	 * 将一个时间字符串格式化为unix timestamp，支持以下格式
+	 * yyyy/mm/dd hh:mm:ss
+	 * yyyy-mm-dd hh:mm:ss
+	 */
 	time_t formatTime(const std::string& time);
 
 	/**
