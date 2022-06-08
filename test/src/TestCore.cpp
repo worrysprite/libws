@@ -414,6 +414,9 @@ bool testString()
 	if (now != String::formatTime(timeStr))
 		return false;
 
+	if (1546444800 != String::formatTime("2019/01/03 00:00"))
+		return false;
+	
 	return 12005313033 == String::formatTime("2350/6/8 17:10:33");
 }
 
