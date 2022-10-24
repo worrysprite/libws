@@ -104,7 +104,7 @@ void* Recordset::getBlob(unsigned long& datasize)
 //===================== MysqlStatement Implements ========================
 
 DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
-	_sql(sql), stmt(mysql_stmt)
+	stmt(mysql_stmt), _sql(sql)
 {
 	// bind params
 	auto numParams = mysql_stmt_param_count(stmt);

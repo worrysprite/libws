@@ -15,7 +15,7 @@ void EventDispatcher::once(int type, const EventCallback* callback, int priority
 			return;
 		}
 	}
-	listeners[type].insert(CallbackType{ callback, priority, true });
+	set.insert(CallbackType{ callback, priority, true });
 }
 
 void EventDispatcher::addEventListener(int type, const EventCallback* callback, int priority)
@@ -30,7 +30,7 @@ void EventDispatcher::addEventListener(int type, const EventCallback* callback, 
 			return;
 		}
 	}
-	listeners[type].insert(CallbackType{ callback, priority, false });
+	set.insert(CallbackType{ callback, priority, false });
 }
 
 void EventDispatcher::removeEventListener(int type, const EventCallback* callback)

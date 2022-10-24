@@ -52,10 +52,10 @@ namespace ws
 			struct CallbackType
 			{
 				//只要回调函数相同就判定相同
-				bool operator==(const CallbackType& other) const
+				/*bool operator==(const CallbackType& other) const
 				{
 					return callback == other.callback;
-				}
+				}*/
 
 				bool operator<(const CallbackType& other) const
 				{
