@@ -1,4 +1,3 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(test)
 
 if (MSVC)
@@ -7,7 +6,7 @@ INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/openssl/include")
 LINK_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/mysql/lib")
 LINK_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/openssl/lib")
 add_compile_options("/std:c++17" "/utf-8" "/MP" "$<$<CONFIG:RELEASE>:/O2>")
-else (CMAKE_COMPILER_IS_GNUCXX)
+elseif (CMAKE_COMPILER_IS_GNUCXX)
 INCLUDE_DIRECTORIES("/usr/include/mysql")
 LINK_DIRECTORIES("/usr/lib64/mysql/")
 add_compile_options("-std=c++17" "-Wall" "$<$<CONFIG:DEBUG>:-g>" "$<$<CONFIG:RELEASE>:-O2>")

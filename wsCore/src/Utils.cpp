@@ -80,6 +80,7 @@ namespace ws::core
 	{
 		constexpr int MAX_STACK = 128;
 		void* stack[MAX_STACK] = { 0 };
+		std::vector<std::string> result;
 
 #ifdef _WIN32
 		//创建一块buffer用于保存符号信息
@@ -96,7 +97,7 @@ namespace ws::core
 		DWORD displacement = 0;
 		IMAGEHLP_LINE64 line;
 
-		std::vector<std::string> result(numFrames + 1);
+		result.resize(numFrames + 1);
 		result[0] = fmt::format("Thread {:#x}", std::hash<std::thread::id>{}(std::this_thread::get_id()));
 		std::string format{ "[{:<" };
 		format += std::to_string(getNumDigitsOfDemical(numFrames));
@@ -108,12 +109,10 @@ namespace ws::core
 
 			result[i + 1] = fmt::format(format, i, symbol->Address, symbol->Name, line.FileName, line.LineNumber);
 		}
-		return result;
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 		// must compile with -rdynamic
 		// 获取栈中各层调用函数地址
 		int numFrames = backtrace(stack, MAX_STACK);
-		std::vector<std::string> result;
 		result.reserve(numFrames);
 
 		//获取堆栈符号信息
@@ -140,7 +139,7 @@ namespace ws::core
 				info.dli_fname = "??";
 			result.push_back(fmt::format(format, i - skip, (uint64_t)stack[i], info.dli_sname, info.dli_fname));
 		}
-		return result;
 #endif
+		return result;
 	}
 }

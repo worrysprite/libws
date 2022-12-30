@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.11)
 PROJECT(libws)
 
 SET(CMAKE_CXX_STANDARD_REQUIRED 17)
@@ -10,7 +10,7 @@ SET(BUILD_SHARED_LIBS false)
 INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/spdlog/include")
 add_compile_options("/std:c++17" "/utf-8" "/MP" "$<$<CONFIG:RELEASE>:/O2>")
 
-else (CMAKE_COMPILER_IS_GNUCXX)
+elseif (CMAKE_COMPILER_IS_GNUCXX)
 SET(BUILD_SHARED_LIBS false)
 SET(CMAKE_INSTALL_PREFIX "/usr/local/libws")
 add_compile_options("-std=c++17" "-Wall" "$<$<CONFIG:DEBUG>:-O0>" "$<$<CONFIG:DEBUG>:-rdynamic>" "$<$<CONFIG:RELEASE>:-O2>")
