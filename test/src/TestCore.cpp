@@ -191,6 +191,7 @@ bool testTimeTool()
 	std::cout << "timezone offset: " << TimeTool::getTimeZoneOffset() << std::endl;
 	std::cout << "day of week: " << TimeTool::getDayOfWeek() << std::endl;
 	std::cout << "day of month: " << TimeTool::getDayOfMonth() << std::endl;
+	std::cout << "system timestamp: " << TimeTool::getSystemTime() << std::endl;
 	return true;
 }
 
@@ -414,10 +415,21 @@ bool testString()
 	if (now != String::formatTime(timeStr))
 		return false;
 
-	if (1546444800 != String::formatTime("2019/01/03 00:00"))
+	if (1546444800 != String::formatTime("2019/01/03 00:00:00"))
 		return false;
 	
-	return 12005313033 == String::formatTime("2350/6/8 17:10:33");
+	if (12005313033 != String::formatTime("2350/6/8 17:10:33"))
+		return false;
+
+	auto tp = sys_days(1969y / 12 / 31);
+	std::cout << std::chrono::duration_cast<seconds>(tp.time_since_epoch()).count() << std::endl;
+
+	auto time = String::formatTime("1970/1/2 08:00:00");
+	std::cout << time << std::endl;
+
+	time = String::formatTime("1969/12/31 08:00:00");
+	std::cout << time << std::endl;
+	return true;
 }
 
 bool testRingBuffer()

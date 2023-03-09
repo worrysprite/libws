@@ -5,9 +5,6 @@
 #include <windows.h>
 #endif
 
-using milliseconds = std::chrono::milliseconds;
-using system_clock = std::chrono::system_clock;
-
 namespace ws
 {
 	namespace core
@@ -15,11 +12,11 @@ namespace ws
 		namespace TimeTool
 		{
 			//获取时间戳
-			template<class ClockType>
-			inline uint64_t getUnixtime() { return (uint64_t)std::chrono::duration_cast<milliseconds>(ClockType::now().time_since_epoch()).count(); }
+			template<class ClockType> requires std::chrono::is_clock_v<ClockType>
+			inline time_t getUnixtime() { return std::chrono::duration_cast<std::chrono::milliseconds>(ClockType::now().time_since_epoch()).count(); }
 
 			//获取系统时间戳（毫秒）
-			inline uint64_t getSystemTime() { return getUnixtime<system_clock>(); }
+			inline time_t getSystemTime() { return getUnixtime<std::chrono::system_clock>(); }
 
 			//把时间戳转成本地日期
 			inline void LocalTime(time_t t, tm& date)
@@ -118,7 +115,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 				{
 					return true;
 				}
-				uint64_t now = getUnixtime<system_clock>();
+				uint64_t now = getSystemTime();
 				if (time >= now)
 				{
 					return false;
@@ -142,7 +139,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			{
 				if (!time)
 					time = getSystemTime();
-				tm date = {0};
+				tm date = { 0 };
 				LocalTime(time / 1000, date);
 				return date.tm_mday;
 			}

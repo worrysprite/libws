@@ -2,9 +2,10 @@
 #include <ctype.h>
 #include <sstream>
 #include <vector>
-#include <iomanip>
 #include "ws/core/String.h"
 #include "ws/core/Math.h"
+
+using namespace std::chrono;
 
 namespace ws::core::String
 {
@@ -77,13 +78,13 @@ namespace ws::core::String
 		if (time.empty())
 			return 0;
 
-		struct tm tm;
 		std::stringstream ss(time);
-		ss >> std::get_time(&tm, format);
+		local_seconds tp;
+		ss >> parse(format, tp);
 		if (ss.fail())
 			return 0;
 
-		return mktime(&tm);
+		return current_zone()->to_sys(tp).time_since_epoch().count();
 	}
 
 	time_t formatTime(const std::string& time)
@@ -91,7 +92,7 @@ namespace ws::core::String
 		if (time.empty())
 			return 0;
 
-		constexpr const char* supportedFormats[] = { "%Y-%m-%d %T", "%Y/%m/%d %T" };
+		constexpr const char* supportedFormats[] = { "%F %T", "%Y/%m/%d %T" };
 		constexpr int numFormats = sizeof(supportedFormats) / sizeof(supportedFormats[0]);
 
 		for (int i = 0; i < numFormats; ++i)
