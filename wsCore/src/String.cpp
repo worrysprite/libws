@@ -2,8 +2,14 @@
 #include <ctype.h>
 #include <sstream>
 #include <vector>
+#include <format>
 #include "ws/core/String.h"
 #include "ws/core/Math.h"
+#ifdef _WIN32
+#include <combaseapi.h>
+#elif defined(__linux__)
+#include <uuid/uuid.h>
+#endif
 
 using namespace std::chrono;
 
@@ -51,6 +57,18 @@ namespace ws::core::String
 		}
 	}
 
+	void toLowercase(std::string& str)
+	{
+		std::transform(str.begin(), str.end(), str.begin(), (int (*)(int))tolower);
+	}
+
+	std::string toLowercase(std::string_view src)
+	{
+		std::string output(src);
+		std::transform(src.begin(), src.end(), output.begin(), (int (*)(int))tolower);
+		return output;
+	}
+
 	void toUppercase(char* str)
 	{
 		while (*str != '\0')
@@ -60,15 +78,26 @@ namespace ws::core::String
 		}
 	}
 
-	bool isPrintableString(const char* str)
+	void toUppercase(std::string& str)
 	{
-		while (*str != '\0')
+		std::transform(str.begin(), str.end(), str.begin(), (int (*)(int))toupper);
+	}
+
+	std::string toUppercase(std::string_view src)
+	{
+		std::string output(src);
+		std::transform(src.begin(), src.end(), output.begin(), (int (*)(int))toupper);
+		return output;
+	}
+
+	bool isPrintableString(std::string_view str)
+	{
+		for (auto c : str)
 		{
-			if (!isprint(*str))
+			if (!isprint(c))
 			{
 				return false;
 			}
-			++str;
 		}
 		return true;
 	}
@@ -217,5 +246,26 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 			result[i] = chars[Math::random(maxLen)];
 		}
 		return result;
+	}
+
+	std::string generateUUID()
+	{
+#ifdef _WIN32
+		GUID guid;
+		if (S_OK == CoCreateGuid(&guid))
+		{
+			return std::format(
+				"{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+				guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1], guid.Data4[2],
+				guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+		}
+		return std::string();
+#elif defined(__linux__)
+		char   buf[64] = { 0 };
+		uuid_t uuid;
+		uuid_generate(uuid);
+		uuid_unparse(uuid, buf);
+		return std::string(buf);
+#endif
 	}
 }

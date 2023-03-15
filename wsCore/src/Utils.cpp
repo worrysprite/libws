@@ -1,6 +1,6 @@
-#include <spdlog/spdlog.h>
 #include "ws/core/Utils.h"
-
+#include <thread>
+#include <format>
 #ifdef _WIN32
 #include <Windows.h>
 #include <DbgHelp.h>
@@ -98,7 +98,7 @@ namespace ws::core
 		IMAGEHLP_LINE64 line;
 
 		result.resize(numFrames + 1);
-		result[0] = fmt::format("Thread {:#x}", std::hash<std::thread::id>{}(std::this_thread::get_id()));
+		result[0] = std::format("Thread {:#x}", std::hash<std::thread::id>{}(std::this_thread::get_id()));
 		std::string format{ "[{:<" };
 		format += std::to_string(getNumDigitsOfDemical(numFrames));
 		format += "}] {:#016x} in {} at {}:{}";
@@ -107,7 +107,7 @@ namespace ws::core
 			SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
 			SymGetLineFromAddr64(process, (DWORD64)(stack[i]), &displacement, &line);
 
-			result[i + 1] = fmt::format(format, i, symbol->Address, symbol->Name, line.FileName, line.LineNumber);
+			result[i + 1] = std::vformat(format, std::make_format_args(i, symbol->Address, symbol->Name, line.FileName, line.LineNumber));
 		}
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 		// must compile with -rdynamic
@@ -117,7 +117,7 @@ namespace ws::core
 
 		//获取堆栈符号信息
 		Dl_info info;
-		result.push_back(fmt::format("Thread {:#x}", std::hash<std::thread::id>{}(std::this_thread::get_id())));
+		result.push_back(std::format("Thread {:#x}", std::hash<std::thread::id>{}(std::this_thread::get_id())));
 		std::string format{ "[{:<" };
 		format += std::to_string(getNumDigitsOfDemical(numFrames));
 		format += "}] {:#016x} in {} at {}";
@@ -127,7 +127,7 @@ namespace ws::core
 			{
 				if (auto demangled = abi::__cxa_demangle(info.dli_sname, nullptr, nullptr, nullptr))
 				{
-					result.push_back(fmt::format(format, i - skip, (uint64_t)stack[i], demangled, info.dli_fname));
+					result.push_back(std::format(format, i - skip, (uint64_t)stack[i], demangled, info.dli_fname));
 					free(demangled);
 					continue;
 				}
@@ -137,7 +137,7 @@ namespace ws::core
 				info.dli_sname = "??";
 			if (!info.dli_fname)
 				info.dli_fname = "??";
-			result.push_back(fmt::format(format, i - skip, (uint64_t)stack[i], info.dli_sname, info.dli_fname));
+			result.push_back(std::format(format, i - skip, (uint64_t)stack[i], info.dli_sname, info.dli_fname));
 		}
 #endif
 		return result;

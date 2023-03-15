@@ -11,6 +11,10 @@ namespace ws
 	{
 		namespace TimeTool
 		{
+			constexpr uint64_t TIME_OF_HOUR = 60 * 60 * 1000;
+			constexpr uint64_t TIME_OF_DAY = 24 * TIME_OF_HOUR;
+			constexpr uint64_t TIME_OF_WEEK = TIME_OF_DAY * 7;
+
 			//获取时间戳
 			template<class ClockType> requires std::chrono::is_clock_v<ClockType>
 			inline time_t getUnixtime() { return std::chrono::duration_cast<std::chrono::milliseconds>(ClockType::now().time_since_epoch()).count(); }

@@ -438,7 +438,7 @@ bool testRingBuffer()
 	auto cap = ring.available();
 	while (ring.used() < cap)	//一直填充到发生扩容
 	{
-		ring << fmt::format("测试：{}", Math::random(1, 999999));
+		ring << std::format("测试：{}", Math::random(1, 999999));
 	}
 	//输出填充的内容
 	while (ring.used())
@@ -452,14 +452,14 @@ bool testRingBuffer()
 	int num = 0;
 	while (ring.used() < cap)
 	{
-		ring << fmt::format("测试测试测试测试测试测试测试测试测试测试：{}", ++num);
+		ring << std::format("测试测试测试测试测试测试测试测试测试测试：{}", ++num);
 	}
 
 	++num;
 	//边输入边输出
 	for (int i = 0; i < 10000; ++i)
 	{
-		ring << fmt::format("测试测试测试测试测试测试测试测试测试测试：{}", num + i);
+		ring << std::format("测试测试测试测试测试测试测试测试测试测试：{}", num + i);
 		spdlog::debug(ring.readString());
 	}
 	return true;

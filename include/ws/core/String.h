@@ -1,6 +1,4 @@
-#ifndef __WS_UTILS_STRING_H__
-#define __WS_UTILS_STRING_H__
-
+#pragma once
 #include <string>
 #include <time.h>
 #include <string.h>
@@ -122,18 +120,27 @@ namespace ws::core::String
 	 * 返回是否完整复制
 	 */
 	bool copy(char* dest, size_t size, const std::string& src, bool asString = true);
-	
-	//字符串转小写
+
+	//C字符串转小写，直接修改
 	void toLowercase(char* str);
-	//字符串转大写
+	//C++字符串转小写，直接修改
+	void toLowercase(std::string& str);
+	//字符串转小写，返回副本
+	std::string toLowercase(std::string_view src);
+
+	//C字符串转大写，直接修改
 	void toUppercase(char* str);
+	//C++字符串转大写，直接修改
+	void toUppercase(std::string& str);
+	//字符串转大写，返回副本
+	std::string toUppercase(std::string_view src);
 
 	/**
 	 * @brief 检测字符串是否为可打印ASCII字符串
 	 * @param str 要检测的字符串
 	 * @return 是否为可打印字符串
 	*/
-	bool isPrintableString(const char* str);
+	bool isPrintableString(std::string_view str);
 
 	/**
 	 * 将一个时间字符串格式化为unix timestamp
@@ -181,6 +188,7 @@ namespace ws::core::String
 
 	//生成随机字符串，length指定长度，chars指定取值内容，未指定则使用大小写字母和数字
 	std::string random(uint16_t length, const char* chars = nullptr);
-}
 
-#endif
+	//生成UUID字符串，格式为：35F58795-FAE6-4012-8FDC-756A2EDE2697
+	std::string generateUUID();
+}

@@ -1,12 +1,9 @@
-PROJECT(wsNetwork)
+project(wsNetwork)
 
-if (MSVC)
-INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/curl/include")
-endif (MSVC)
+find_package(CURL CONFIG REQUIRED)
 
-AUX_SOURCE_DIRECTORY(${PROJECT_SOURCE_DIR}/src wsNetwork_src)
-ADD_LIBRARY(${PROJECT_NAME} ${wsNetwork_src})
+aux_source_directory(${PROJECT_SOURCE_DIR}/src wsNetwork_src)
+add_library(${PROJECT_NAME} ${wsNetwork_src})
 
-if (CMAKE_COMPILER_IS_GNUCXX)
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} curl)
-endif(CMAKE_COMPILER_IS_GNUCXX)
+target_link_libraries(${PROJECT_NAME} PRIVATE CURL::libcurl)
+#target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog spdlog::spdlog_header_only)

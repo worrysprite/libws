@@ -1,31 +1,33 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.11)
-PROJECT(libws)
+cmake_minimum_required(VERSION 3.16)
+project(libws)
 
-SET(CMAKE_CXX_STANDARD_REQUIRED 17)
-SET(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED 20)
+set(CMAKE_CXX_STANDARD 20)
 
-INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
+find_package(spdlog CONFIG REQUIRED)
+
+include_directories("${PROJECT_SOURCE_DIR}/include")
+include_directories("${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
+
+set(BUILD_SHARED_LIBS false)
+set(LIBRARY_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/build/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build/bin")
+
+add_compile_definitions("$<$<CONFIG:Debug>:_DEBUG>" "$<$<CONFIG:Release>:NDEBUG>")
+
 if (MSVC)
-SET(BUILD_SHARED_LIBS false)
-INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/spdlog/include")
-add_compile_options("/std:c++17" "/utf-8" "/MP" "$<$<CONFIG:RELEASE>:/O2>")
-
+add_compile_definitions("_CONSOLE" "WIN32_LEAN_AND_MEAN" "NOMINMAX" "_CRT_SECURE_NO_WARNINGS" "_WIN32_WINNT=0x0601")
+add_compile_options("/std:c++20" "/utf-8" "/MP" "$<$<CONFIG:Release>:/O2>")
 elseif (CMAKE_COMPILER_IS_GNUCXX)
-SET(BUILD_SHARED_LIBS false)
-SET(CMAKE_INSTALL_PREFIX "/usr/local/libws")
-add_compile_options("-std=c++17" "-Wall" "$<$<CONFIG:DEBUG>:-O0>" "$<$<CONFIG:DEBUG>:-rdynamic>" "$<$<CONFIG:RELEASE>:-O2>")
-
+set(CMAKE_INSTALL_PREFIX "/usr/local/libws")
+add_compile_options("-std=c++20" "-Wall" "$<$<CONFIG:Debug>:-O0>" "$<$<CONFIG:Debug>:-rdynamic>" "$<$<CONFIG:Release>:-O2>")
 endif (MSVC)
 
-#设置输出目录 库
-SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build/bin)
-SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build/bin)
-
-ADD_SUBDIRECTORY(wsCore)
-ADD_SUBDIRECTORY(wsDatabase)
-ADD_SUBDIRECTORY(wsNetwork)
-ADD_SUBDIRECTORY(test)
+add_subdirectory(wsCore)
+add_subdirectory(wsDatabase)
+add_subdirectory(wsNetwork)
+add_subdirectory(test)
 
 #设置安装目录
-INSTALL(TARGETS wsCore wsDatabase wsNetwork RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR})
-INSTALL(DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.h")
+install(TARGETS wsCore wsDatabase wsNetwork RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.h")

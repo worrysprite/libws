@@ -9,8 +9,8 @@ namespace ws
 	{
 		struct Event
 		{
-			Event(int t = 0) :type(t){}
-			virtual ~Event(){}
+			Event(int t = 0) :type(t) {}
+			virtual ~Event() {}
 			int				type;
 		};
 
@@ -20,7 +20,7 @@ namespace ws
 		{
 			virtual ~EventListener() {}
 			virtual void onEvent(const Event& evt) = 0;
-		
+
 			void operator()(const Event& evt) { onEvent(evt); }
 		};
 
@@ -73,5 +73,12 @@ namespace ws
 
 			std::unordered_map<int, std::set<CallbackType>> listeners;
 		};
+
+		//provides a global instance
+		inline EventDispatcher& getGlobalDispatcher()
+		{
+			static EventDispatcher dispatcher;
+			return dispatcher;
+		}
 	}
 }

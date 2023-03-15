@@ -1,6 +1,9 @@
 #include <assert.h>
 #include <iostream>
 #include <spdlog/spdlog.h>
+#if _WIN32
+#include <Windows.h>
+#endif
 
 extern bool testSignal();
 extern bool testEvent();
@@ -21,7 +24,7 @@ extern bool testTimer();
 
 int main()
 {
-#if _WIN32 && _DEBUG
+#if _WIN32
 	SetConsoleOutputCP(CP_UTF8);
 #endif
 	spdlog::set_level(spdlog::level::debug);
@@ -41,7 +44,7 @@ int main()
 	//assert(testEnum());
 	//assert(testTypeCheck());
 	//assert(testDatabase());
-	//assert(testTimer());
+	assert(testTimer());
 	//assert(testCallstack());
 
 	std::cout << "all tests passed!" << std::endl;

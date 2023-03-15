@@ -1,10 +1,8 @@
-PROJECT(wsDatabase)
+project(wsDatabase)
 
-if (MSVC)
-INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/mysql/include")
-elseif (CMAKE_COMPILER_IS_GNUCXX)
-INCLUDE_DIRECTORIES("/usr/include/mysql")
-endif (MSVC)
+find_package(libmysql REQUIRED)
 
-AUX_SOURCE_DIRECTORY(${PROJECT_SOURCE_DIR}/src wsdatabase_src)
-ADD_LIBRARY(${PROJECT_NAME} ${wsdatabase_src})
+aux_source_directory(${PROJECT_SOURCE_DIR}/src wsdatabase_src)
+add_library(${PROJECT_NAME} ${wsdatabase_src})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog spdlog::spdlog_header_only)
