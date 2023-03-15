@@ -13,7 +13,7 @@ add_compile_options("/std:c++20" "/utf-8" "/MP" "$<$<CONFIG:RELEASE>:/O2>")
 elseif (CMAKE_COMPILER_IS_GNUCXX)
 SET(BUILD_SHARED_LIBS false)
 SET(CMAKE_INSTALL_PREFIX "/usr/local/libws")
-add_compile_options("-std=c++20" "-Wall" "$<$<CONFIG:DEBUG>:-O0>" "$<$<CONFIG:DEBUG>:-rdynamic>" "$<$<CONFIG:RELEASE>:-O2>")
+add_compile_options("-std=c++20" "-Wall" "$<$<CONFIG:DEBUG>:-O0>" "$<$<CONFIG:DEBUG>:-rdynamic>" "$<$<CONFIG:RELEASE>:-O2>" "-fconcepts")
 
 endif (MSVC)
 
@@ -29,5 +29,3 @@ ADD_SUBDIRECTORY(test)
 #设置安装目录
 INSTALL(TARGETS wsCore wsDatabase wsNetwork RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR})
 INSTALL(DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.h")
-
-add_test(test test)

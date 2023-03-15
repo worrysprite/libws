@@ -89,13 +89,13 @@ namespace ws::core::String
 
 		return current_zone()->to_sys(tp).time_since_epoch().count();
 #elif defined(__linux__) || defined(__unix__)
-		struct tm tm;
+		tm datetime{};
 		std::stringstream ss(time);
-		ss >> std::get_time(&tm, format);
+		ss >> std::get_time(&datetime, format);
 		if (ss.fail())
 			return 0;
 
-		return mktime(&tm);
+		return mktime(&datetime);
 #endif
 	}
 
@@ -104,7 +104,7 @@ namespace ws::core::String
 		if (time.empty())
 			return 0;
 
-		constexpr const char* supportedFormats[] = { "%F %T", "%Y/%m/%d %T" };
+		constexpr const char* supportedFormats[] = { "%Y-%m-%d %T", "%Y/%m/%d %T" };
 		constexpr int numFormats = sizeof(supportedFormats) / sizeof(supportedFormats[0]);
 
 		for (int i = 0; i < numFormats; ++i)
