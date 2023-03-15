@@ -2,6 +2,8 @@
 #include <ctype.h>
 #include <sstream>
 #include <vector>
+#include <chrono>
+#include <iomanip>
 #include "ws/core/String.h"
 #include "ws/core/Math.h"
 
@@ -78,13 +80,23 @@ namespace ws::core::String
 		if (time.empty())
 			return 0;
 
+#ifdef _WIN32
 		std::stringstream ss(time);
 		local_seconds tp;
-		ss >> parse(format, tp);
+		ss >> std::chrono::parse(format, tp);
 		if (ss.fail())
 			return 0;
 
 		return current_zone()->to_sys(tp).time_since_epoch().count();
+#elif defined(__linux__) || defined(__unix__)
+		struct tm tm;
+		std::stringstream ss(time);
+		ss >> std::get_time(&tm, format);
+		if (ss.fail())
+			return 0;
+
+		return mktime(&tm);
+#endif
 	}
 
 	time_t formatTime(const std::string& time)

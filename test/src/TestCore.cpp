@@ -417,12 +417,14 @@ bool testString()
 
 	if (1546444800 != String::formatTime("2019/01/03 00:00:00"))
 		return false;
-	
+
 	if (12005313033 != String::formatTime("2350/6/8 17:10:33"))
 		return false;
 
+#ifdef _WIN32
 	auto tp = sys_days(1969y / 12 / 31);
 	std::cout << std::chrono::duration_cast<seconds>(tp.time_since_epoch()).count() << std::endl;
+#endif
 
 	auto time = String::formatTime("1970/1/2 08:00:00");
 	std::cout << time << std::endl;
