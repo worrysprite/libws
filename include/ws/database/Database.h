@@ -229,7 +229,7 @@ namespace ws
 					{
 						b.buffer_type = MYSQL_TYPE_DOUBLE;
 					}
-					auto& buffer = paramsBuffer.emplace_back(&value, sizeof(T));
+					auto& buffer = paramsBuffer.emplace_back((const char*)&value, sizeof(T));
 					b.buffer = buffer.data();
 					b.buffer_length = sizeof(T);
 					b.is_unsigned = false;
