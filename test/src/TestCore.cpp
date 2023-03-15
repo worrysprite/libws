@@ -425,11 +425,9 @@ bool testString()
 	std::cout << std::chrono::duration_cast<seconds>(tp.time_since_epoch()).count() << std::endl;
 #endif
 
-	auto time = String::formatTime("1970/1/2 08:00:00");
-	std::cout << time << std::endl;
-
-	time = String::formatTime("1969/12/31 08:00:00");
-	std::cout << time << std::endl;
+	const char date1[] = "1970/01/02 08:00:00", date2[] = "1969/12/31 08:00:00";
+	std::cout << "Timestamp of " << date1 << " is " << String::formatTime(date1) << std::endl;
+	std::cout << "Timestamp of " << date2 << " is " << String::formatTime(date2) << std::endl;
 	return true;
 }
 
