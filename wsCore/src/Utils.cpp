@@ -107,7 +107,7 @@ namespace ws::core
 			SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
 			SymGetLineFromAddr64(process, (DWORD64)(stack[i]), &displacement, &line);
 
-			result[i + 1] = fmt::format(format, i, symbol->Address, symbol->Name, line.FileName, line.LineNumber);
+			result[i + 1] = fmt::format(fmt::runtime(format), i, symbol->Address, symbol->Name, line.FileName, line.LineNumber);
 		}
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 		// must compile with -rdynamic
@@ -127,7 +127,7 @@ namespace ws::core
 			{
 				if (auto demangled = abi::__cxa_demangle(info.dli_sname, nullptr, nullptr, nullptr))
 				{
-					result.push_back(fmt::format(format, i - skip, (uint64_t)stack[i], demangled, info.dli_fname));
+					result.push_back(fmt::format(fmt::runtime(format), i - skip, (uint64_t)stack[i], demangled, info.dli_fname));
 					free(demangled);
 					continue;
 				}
@@ -137,7 +137,7 @@ namespace ws::core
 				info.dli_sname = "??";
 			if (!info.dli_fname)
 				info.dli_fname = "??";
-			result.push_back(fmt::format(format, i - skip, (uint64_t)stack[i], info.dli_sname, info.dli_fname));
+			result.push_back(fmt::format(fmt::runtime(format), i - skip, (uint64_t)stack[i], info.dli_sname, info.dli_fname));
 		}
 #endif
 		return result;
