@@ -9,6 +9,8 @@
 using namespace ws::database;
 using namespace std::chrono;
 
+//typedef bool my_bool;
+
 //===================== Recordset Implements ========================
 Recordset::Recordset(MYSQL_RES* res, const std::string& sql) :
 	fieldIndex(0), mysqlRow(nullptr), mysqlRes(res), sql(sql)
@@ -165,7 +167,7 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
 			b.is_unsigned = (fields[i].flags & UNSIGNED_FLAG) > 0;
 			b.buffer = malloc(buffer_length);
 			b.buffer_length = buffer_length;
-			b.is_null = new my_bool;
+			b.is_null = new bool;
 			b.length = new unsigned long;
 		}
 		if (mysql_stmt_bind_result(stmt, resultBind.data()))
