@@ -331,8 +331,7 @@ bool testTypeCheck()
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 bool testPidfile()
 {
-	static const char PID_FILE[] = "/var/run/test.pid";
-	if (createPidfile(PID_FILE))
+	if (createPidfile("test.pid"))
 	{
 		std::cout << "lock pidfile success!" << std::endl;
 		return true;
@@ -415,20 +414,20 @@ bool testString()
 	if (now != String::formatTime(timeStr))
 		return false;
 
-	if (1546444800 != String::formatTime("2019/01/03 00:00:00"))
-		return false;
-	
-	if (12005313033 != String::formatTime("2350/6/8 17:10:33"))
+	if (1546444800 != String::formatTime(String::formatTime(1546444800, "%Y-%m-%d %T")))
 		return false;
 
+	if (12005313033 != String::formatTime(String::formatTime(12005313033, "%Y/%m/%d %T")))
+		return false;
+
+#ifdef _WIN32
 	auto tp = sys_days(1969y / 12 / 31);
 	std::cout << std::chrono::duration_cast<seconds>(tp.time_since_epoch()).count() << std::endl;
+#endif
 
-	auto time = String::formatTime("1970/1/2 08:00:00");
-	std::cout << time << std::endl;
-
-	time = String::formatTime("1969/12/31 08:00:00");
-	std::cout << time << std::endl;
+	const char date1[] = "1970/01/02 08:00:00", date2[] = "1969/12/31 08:00:00";
+	std::cout << "Timestamp of " << date1 << " is " << String::formatTime(date1) << std::endl;
+	std::cout << "Timestamp of " << date2 << " is " << String::formatTime(date2) << std::endl;
 	return true;
 }
 

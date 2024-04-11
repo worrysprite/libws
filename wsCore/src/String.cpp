@@ -3,6 +3,8 @@
 #include <sstream>
 #include <vector>
 #include <format>
+#include <chrono>
+#include <iomanip>
 #include "ws/core/String.h"
 #include "ws/core/Math.h"
 #ifdef _WIN32
@@ -107,13 +109,23 @@ namespace ws::core::String
 		if (time.empty())
 			return 0;
 
+#ifdef _WIN32
 		std::stringstream ss(time);
 		local_seconds tp;
-		ss >> parse(format, tp);
+		ss >> std::chrono::parse(format, tp);
 		if (ss.fail())
 			return 0;
 
 		return current_zone()->to_sys(tp).time_since_epoch().count();
+#elif defined(__linux__) || defined(__unix__)
+		tm datetime{};
+		std::stringstream ss(time);
+		ss >> std::get_time(&datetime, format);
+		if (ss.fail())
+			return 0;
+
+		return mktime(&datetime);
+#endif
 	}
 
 	time_t formatTime(const std::string& time)
@@ -121,7 +133,7 @@ namespace ws::core::String
 		if (time.empty())
 			return 0;
 
-		constexpr const char* supportedFormats[] = { "%F %T", "%Y/%m/%d %T" };
+		constexpr const char* supportedFormats[] = { "%Y-%m-%d %T", "%Y/%m/%d %T" };
 		constexpr int numFormats = sizeof(supportedFormats) / sizeof(supportedFormats[0]);
 
 		for (int i = 0; i < numFormats; ++i)

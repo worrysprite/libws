@@ -51,7 +51,7 @@ namespace ws
 			auto end = getNode(endX, endY, map.getWidth());
 			if (!start || !end)
 			{
-				spdlog::error("%s invalid arguments!", __FUNCTION__);
+				spdlog::error("{} invalid arguments!", __FUNCTION__);
 				return false;		//参数错误无法寻路
 			}
 #ifdef _DEBUG_ASTAR
