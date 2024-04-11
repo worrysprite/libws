@@ -84,7 +84,7 @@ namespace ws::core
 
 #ifdef _WIN32
 		//创建一块buffer用于保存符号信息
-		char buffer[sizeof(SYMBOL_INFO) + sizeof(char) * MAX_SYM_NAME];
+		char buffer[sizeof(SYMBOL_INFO) + sizeof(char) * MAX_SYM_NAME]{ 0 };
 		SYMBOL_INFO* symbol = (SYMBOL_INFO*)buffer;
 		symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 		symbol->MaxNameLen = MAX_SYM_NAME;
@@ -95,7 +95,9 @@ namespace ws::core
 		int numFrames = CaptureStackBackTrace(skip, MAX_STACK, stack, NULL);
 
 		DWORD displacement = 0;
-		IMAGEHLP_LINE64 line;
+		IMAGEHLP_LINE64 line{};
+		line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+		SymSetOptions(SymGetOptions() | SYMOPT_LOAD_LINES);
 
 		result.resize(numFrames + 1);
 		result[0] = fmt::format("Thread {:#x}", std::hash<std::thread::id>{}(std::this_thread::get_id()));
@@ -104,9 +106,15 @@ namespace ws::core
 		format += "}] {:#016x} in {} at {}:{}";
 		for (int i = 0; i < numFrames; ++i)
 		{
-			SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
-			SymGetLineFromAddr64(process, (DWORD64)(stack[i]), &displacement, &line);
-
+			if (!SymFromAddr(process, (DWORD64)(stack[i]), nullptr, symbol))
+			{
+				memcpy(&symbol->Name, "??", sizeof("??"));
+			}
+			if (!SymGetLineFromAddr64(process, (DWORD64)(stack[i]), &displacement, &line))
+			{
+				line.FileName = (char*)"??";
+				line.LineNumber = 0;
+			}
 			result[i + 1] = fmt::format(fmt::runtime(format), i, symbol->Address, symbol->Name, line.FileName, line.LineNumber);
 		}
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
