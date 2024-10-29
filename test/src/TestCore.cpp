@@ -384,7 +384,7 @@ bool testTimer()
 
 bool testString()
 {
-	const std::string teststr("The quick brown fox jump sover the lazy dog.");
+	std::string teststr("The quick brown fox jump sover the lazy dog.");
 	char input[1024] = { 0 };
 	teststr.copy(input, teststr.size());
 
@@ -400,6 +400,9 @@ bool testString()
 
 	if (teststr != String::join(result1, " "))
 		return false;
+
+	teststr = "123456";
+	std::cout << String::md5(teststr.c_str(), teststr.size()) << std::endl;
 
 	std::list<std::string> strlist{ "5", "4", "3", "2", "1" };
 	if (String::join(strlist, ",") != "5,4,3,2,1")

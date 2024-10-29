@@ -167,7 +167,7 @@ namespace ws::core::String
 	 * 封装openssl计算md5，适合小量的数据
 	 * 返回md5结果的十六进制字符串
 	 */
-	std::string md5(const void* input, size_t length);
+	std::string md5(const void* input, size_t length, bool hex = true);
 
 	/**
 	 * 二进制转十六进制字符串

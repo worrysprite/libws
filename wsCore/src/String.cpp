@@ -1,4 +1,4 @@
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 #include <ctype.h>
 #include <sstream>
 #include <vector>
@@ -130,15 +130,22 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 		return std::string(buff);
 	}
 
-	std::string md5(const void* input, size_t length)
+	std::string md5(const void* input, size_t length, bool hex)
 	{
 		if (!length)
 		{
 			return std::string();
 		}
-		unsigned char digest[MD5_DIGEST_LENGTH] = { 0 };
-		MD5(static_cast<const unsigned char*>(input), length, digest);
-		return bin2Hex(static_cast<const uint8_t*>(digest), MD5_DIGEST_LENGTH);
+		unsigned char digest[16] = { 0 };
+		auto ctx = EVP_MD_CTX_new();
+		EVP_DigestInit_ex(ctx, EVP_md5(), nullptr);
+		EVP_DigestUpdate(ctx, input, length);
+		EVP_DigestFinal_ex(ctx, digest, nullptr);
+		EVP_MD_CTX_free(ctx);
+		if (hex) {
+			return bin2Hex(static_cast<const uint8_t*>(digest), sizeof(digest));
+		}
+		return std::string(reinterpret_cast<const char*>(digest), sizeof(digest));
 	}
 
 	static const char HEX_DIGIT[] = "0123456789ABCDEF";
