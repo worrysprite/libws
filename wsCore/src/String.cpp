@@ -1,7 +1,6 @@
 #include <openssl/md5.h>
 #include <ctype.h>
 #include <sstream>
-#include <vector>
 #include <chrono>
 #include <iomanip>
 #include "ws/core/String.h"
@@ -128,17 +127,6 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 		char buff[30] = { 0 };
 		strftime(buff, sizeof(buff), format, &date);
 		return std::string(buff);
-	}
-
-	std::string md5(const void* input, size_t length)
-	{
-		if (!length)
-		{
-			return std::string();
-		}
-		unsigned char digest[MD5_DIGEST_LENGTH] = { 0 };
-		MD5(static_cast<const unsigned char*>(input), length, digest);
-		return bin2Hex(static_cast<const uint8_t*>(digest), MD5_DIGEST_LENGTH);
 	}
 
 	static const char HEX_DIGIT[] = "0123456789ABCDEF";

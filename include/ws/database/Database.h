@@ -1,5 +1,5 @@
 #pragma once
-#include <mysql.h>
+#include <mysql/mysql.h>
 #include <string>
 #include <vector>
 #include <list>
@@ -102,7 +102,7 @@ namespace ws
 			uint32_t			fieldIndex;
 			uint32_t			numFields;
 			MYSQL_ROW			mysqlRow;
-			MYSQL_RES*			mysqlRes;
+			MYSQL_RES* mysqlRes;
 			std::string			sql;
 		};
 		using RecordsetPtr = std::unique_ptr<Recordset>;
@@ -322,15 +322,15 @@ namespace ws
 			//清空所有绑定和查询结果
 			void clear();
 			//跳过num个字段
-			inline void skipFields(int num){ resultIndex += num; }
+			inline void skipFields(int num) { resultIndex += num; }
 			//参数个数
 			inline uint32_t numParams() { return static_cast<uint32_t>(paramBind.size()); }
 			//查询结果的字段数量
-			inline uint32_t numResultFields(){ return static_cast<uint32_t>(resultBind.size()); }
+			inline uint32_t numResultFields() { return static_cast<uint32_t>(resultBind.size()); }
 			//结果行数或影响行数
-			inline my_ulonglong numRows(){ return _numRows; }
+			inline my_ulonglong numRows() { return _numRows; }
 			//最后一次插入id（自增id字段）
-			inline my_ulonglong lastInsertId(){ return _lastInsertId; }
+			inline my_ulonglong lastInsertId() { return _lastInsertId; }
 			//关联的sql语句
 			inline const std::string& sql() const { return _sql; }
 
@@ -339,7 +339,7 @@ namespace ws
 			uint32_t								resultIndex = 0;
 			my_ulonglong							_numRows = 0;
 			my_ulonglong							_lastInsertId = 0;
-			MYSQL_STMT*								stmt;
+			MYSQL_STMT* stmt;
 			std::chrono::steady_clock::time_point	lastUseTime;
 			std::string								_sql;
 			std::vector<MYSQL_BIND>					paramBind;
@@ -351,7 +351,7 @@ namespace ws
 		class DBRequest
 		{
 		public:
-			virtual ~DBRequest(){};
+			virtual ~DBRequest() {};
 			virtual void onRequest(Database& db) = 0;
 			virtual void onFinish() = 0;
 		};
@@ -434,7 +434,7 @@ namespace ws
 
 		protected:
 			MySQLConfig										dbConfig;
-			MYSQL*											mysql;
+			MYSQL* mysql;
 			my_ulonglong									numAffectedRows;
 			my_ulonglong									numResultRows;
 			RecordsetPtr									lastRecords;
@@ -454,7 +454,7 @@ namespace ws
 			const MySQLConfig& getConfig() const { return config; }
 			//设置数据库连接配置，修改后不会影响现有连接
 			void setConfig(const MySQLConfig& cfg) { config = cfg; }
-			
+
 			//设置数据库并发线程数，小于当前线程数时会使删除的线程完成正在查询的请求后退出
 			void setThread(size_t numThread);
 
