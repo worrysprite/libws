@@ -2,3 +2,4 @@
 .vscode/
 build/
 3rd/
+vcpkg_installed/

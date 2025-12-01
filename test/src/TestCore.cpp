@@ -93,8 +93,17 @@ struct TestStruct
 	uint32_t			u32;
 	int64_t				i64;
 	uint64_t			u64;
+
+	constexpr size_t size()
+	{
+		constexpr size_t sz = GET_FIELD_SIZE(i8, u64);
+		static_assert(sz == sizeof(TestStruct));
+		return sz;
+	}
 };
 #pragma pack(pop)
+
+
 
 bool testByteArray()
 {

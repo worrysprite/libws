@@ -1,7 +1,6 @@
 #include <openssl/evp.h>
 #include <ctype.h>
 #include <sstream>
-#include <vector>
 #include <chrono>
 #include <iomanip>
 #include "ws/core/String.h"

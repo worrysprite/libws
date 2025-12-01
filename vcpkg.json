@@ -1,0 +1,17 @@
+{
+	"$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+	"name": "libws",
+	"version": "1.0.0",
+	"builtin-baseline": "4acadb7d732e662bbf130c4849be6d3a0aa6f6b9",
+	"dependencies": [
+		{
+			"name": "libmysql",
+			"version>=": "8.0.40",
+			"platform": "windows"
+		},
+		{
+			"name": "spdlog",
+			"version>=": "1.15.3"
+		}
+	]
+}
