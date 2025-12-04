@@ -1,7 +1,7 @@
 PROJECT(wsDatabase)
 
 if (MSVC)
-INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/mysql/include")
+find_package(libmysql CONFIG REQUIRED)
 elseif (CMAKE_COMPILER_IS_GNUCXX)
 INCLUDE_DIRECTORIES("/usr/include/mysql")
 endif (MSVC)
