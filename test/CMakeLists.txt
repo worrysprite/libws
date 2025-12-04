@@ -6,7 +6,6 @@ elseif (CMAKE_COMPILER_IS_GNUCXX)
 INCLUDE_DIRECTORIES(/usr/include/mysql)
 LINK_DIRECTORIES(/usr/lib64/mysql)
 endif (MSVC)
-find_package(openssl CONFIG REQUIRED)
 
 AUX_SOURCE_DIRECTORY(${PROJECT_SOURCE_DIR}/src test_src)
 

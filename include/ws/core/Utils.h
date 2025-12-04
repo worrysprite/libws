@@ -4,9 +4,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <stddef.h>
 
 //获取从from字段（包含）到to字段（包含）的大小
-#define GET_FIELD_SIZE(from, to) ((uintptr_t)&(((decltype(this))0)->to)-(uintptr_t)&(((decltype(this))0)->from)+sizeof(to))
+#define GET_FIELD_SIZE(from, to) (offsetof(std::remove_pointer_t<decltype(this)>,to)-offsetof(std::remove_pointer_t<decltype(this)>,from)+sizeof(to))
 //从from字段到to字段0值初始化
 #define ZERO_INIT(from, to) memset(&from, 0, GET_FIELD_SIZE(from, to))
 
