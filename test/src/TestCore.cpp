@@ -103,8 +103,6 @@ struct TestStruct
 };
 #pragma pack(pop)
 
-
-
 bool testByteArray()
 {
 	std::cout << "====================Test ByteArray====================" << std::endl;
