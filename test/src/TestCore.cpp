@@ -1,7 +1,7 @@
 #include <iostream>
-#include <fstream>
 #include <spdlog/spdlog.h>
 #include "ws/core/Signal.h"
+#include "ws/core/Sonyflake.h"
 #include "ws/core/Event.h"
 #include "ws/core/ByteArray.h"
 #include "ws/core/Utils.h"
@@ -11,6 +11,7 @@
 #include "ws/core/Timer.h"
 #include "ws/core/String.h"
 #include "ws/core/RingBuffer.h"
+#include "ws/core/Utils.h"
 
 using namespace ws::core;
 
@@ -19,18 +20,18 @@ bool testSignal()
 	std::cout << "====================Test Signal====================" << std::endl;
 	Signal<> sig1;
 	std::function<void()> cb1 = []()
-	{
-		std::cout << "no params callback" << std::endl;
-	};
+		{
+			std::cout << "no params callback" << std::endl;
+		};
 
 	sig1.add(&cb1);
 	sig1.notify();
 
 	Signal<const int&, const float&> sig2;
 	std::function<void(const int& a, const float& b)> cb2 = [](int a, float b)
-	{
-		std::cout << "a=" << a << ", b=" << b << std::endl;
-	};
+		{
+			std::cout << "a=" << a << ", b=" << b << std::endl;
+		};
 
 	sig2.add(&cb2);
 	sig2.notify(1, 0.5f);
@@ -45,9 +46,9 @@ bool testEvent()
 
 	// test with function
 	std::function<void(const Event&)> cb = [](const Event& evt)
-	{
-		std::cout << "Trigger event, type=" << evt.type << std::endl;
-	};
+		{
+			std::cout << "Trigger event, type=" << evt.type << std::endl;
+		};
 
 	dispatcher.addEventListener(1, &cb);
 	Event evt(1);
@@ -490,8 +491,29 @@ struct cstest
 bool testCallstack()
 {
 	return [](int val)
+		{
+			cstest t;
+			return t.hello(val);
+		}(666) == 666;
+}
+
+bool testSonyflake()
+{
+	auto rawId = getMachineRawId();
+	uint16_t machineId = 0;
+	if (!rawId.empty())
 	{
-		cstest t;
-		return t.hello(val);
-	}(666) == 666;
+		auto hash = std::hash<std::string>{}(rawId);
+		hash ^= hash >> 32;
+		hash ^= hash >> 16;
+		machineId = static_cast<uint16_t>(hash);
+	}
+
+	Sonyflake generator(machineId);
+	spdlog::debug("Sonyflake initialized with Machine ID: {}", machineId);
+	for (int i = 0; i < 10; ++i)
+	{
+		spdlog::debug("Sonyflake generated: {}", generator.nextId());
+	}
+	return true;
 }

@@ -68,5 +68,8 @@
     <ClInclude Include="..\include\ws\core\AStar.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\ws\core\Sonyflake.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

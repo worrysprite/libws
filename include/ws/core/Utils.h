@@ -207,4 +207,10 @@ namespace ws::core
 	 * @param skip 跳过堆栈帧数，默认跳过本函数
 	 */
 	std::vector<std::string> callstack(int skip = 1);
+
+	/**
+	 * @brief 获取原始机器id
+	 * @return 
+	 */
+	std::string getMachineRawId();
 }

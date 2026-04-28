@@ -170,6 +170,7 @@
     <ClInclude Include="..\include\ws\core\ObjectPool.h" />
     <ClInclude Include="..\include\ws\core\Profiler.h" />
     <ClInclude Include="..\include\ws\core\Signal.h" />
+    <ClInclude Include="..\include\ws\core\Sonyflake.h" />
     <ClInclude Include="..\include\ws\core\String.h" />
     <ClInclude Include="..\include\ws\core\Timer.h" />
     <ClInclude Include="..\include\ws\core\TimeTool.h" />

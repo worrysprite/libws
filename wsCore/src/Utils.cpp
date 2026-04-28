@@ -150,4 +150,32 @@ namespace ws::core
 #endif
 		return result;
 	}
+
+	std::string getMachineRawId()
+	{
+		std::string id;
+#ifdef _WIN32
+		HKEY hKey;
+		if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Cryptography", 0, KEY_READ | KEY_WOW64_64KEY, &hKey) == ERROR_SUCCESS) {
+			char buffer[256] = { 0 };
+			DWORD dwSize = sizeof(buffer);
+			if (RegQueryValueExA(hKey, "MachineGuid", NULL, NULL, (LPBYTE)buffer, &dwSize) == ERROR_SUCCESS) {
+				id = buffer;
+			}
+			RegCloseKey(hKey);
+		}
+#elif __linux__
+		std::ifstream file("/etc/machine-id");
+		if (!file.is_open()) file.open("/var/lib/dbus/machine-id");
+		if (file.is_open()) {
+			std::getline(file, id);
+		}
+#elif __APPLE__
+		// macOS 简化处理：可以用 hostname 替代或调用 gethostuuid
+		char buffer[256];
+		gethostname(buffer, sizeof(buffer));
+		id = buffer;
+#endif
+		return id;
+	}
 }
