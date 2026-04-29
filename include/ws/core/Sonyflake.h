@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstdint>
 #include <thread>
+#include "TimeTool.h"
 
 namespace ws::core
 {
@@ -9,34 +10,31 @@ namespace ws::core
 	{
 	public:
 		// machine_id: 0 - 65535
-		Sonyflake(uint16_t machineId) : machineId(machineId), lastTime(0), sequence(0)
+		Sonyflake(uint16_t machineId) : machineId(machineId), lastTick(0), sequence(0)
+#if _DEBUG
+			, sleepCount(0), yieldCount(0)
+#endif
 		{
 			// 1. 设置自定义 Epoch (例如 2024-01-01 00:00:00 UTC)
-			// Sonyflake 建议的时间单位是 10ms
 			constexpr uint64_t startEpoch = 1704067200000;
 
 			// 2. 锚定系统时钟和单调时钟
-			auto sys_now = std::chrono::system_clock::now();
+			auto now = TimeTool::getUnixtime();
+			startSystime = now - startEpoch;
 			startSteadyTime = std::chrono::steady_clock::now();
-
-			auto duration =
-				std::chrono::duration_cast<std::chrono::milliseconds>(sys_now.time_since_epoch());
-			startSystime = (duration.count() - startEpoch) / 10;
 		}
 
 		// 注意不是线程安全，多线程使用请自行保证线程安全
 		uint64_t nextId()
 		{
-			uint64_t currentTime = getCurrentElapsedTime();
-
-			// 逻辑处理：如果当前时间等于上次时间
-			if (currentTime == lastTime)
+			uint64_t currentTick = getCurrentTime() / 10;
+			// Sonyflake 建议的时间单位是 10ms
+			if (currentTick == lastTick)
 			{
-				sequence = (sequence + 1) & 0xFF; // 8 bits: 0-255
-				if (sequence == 0)
+				if (++sequence == 0)
 				{
 					// 序列号溢出，当前 10ms 额度用完，强制进入下一个 10ms
-					currentTime = waitNextTick(lastTime);
+					currentTick = waitNextTick((lastTick + 1) * 10) / 10;
 				}
 			}
 			else
@@ -44,40 +42,70 @@ namespace ws::core
 				// 时间前进，重置序列号
 				sequence = 0;
 			}
-
-			lastTime = currentTime;
-
-			// 组装 ID (1bit 0 + 39bit time + 8bit seq + 16bit machine)
-			return (lastTime << 24) | (static_cast<uint64_t>(sequence) << 16) | machineId;
+			lastTick = currentTick;
+			// 组装 ID (1bit 0 + 39bit time + 16bit machine + 8bit seq)
+			return (lastTick << 24) | (uint64_t(machineId) << 8) | uint64_t(sequence);
 		}
 
-	private:
-		// 获取基于单调时钟计算的相对时间戳（单位：10ms）
-		uint64_t getCurrentElapsedTime() const
+#if _DEBUG
+		uint32_t getSleepCount() const
 		{
-			auto now_steady = std::chrono::steady_clock::now();
-			auto diff =
-				std::chrono::duration_cast<std::chrono::milliseconds>(now_steady - startSteadyTime);
-			return startSystime + (diff.count() / 10);
+			return sleepCount;
+		}
+
+		uint32_t getYieldCount() const
+		{
+			return yieldCount;
+		}
+#endif
+
+	private:
+		// 获取相对自定义Epoch的稳定时间戳
+		uint64_t getCurrentTime() const
+		{
+			// 基于单调时钟计算当前时间戳，不受时钟回拨影响
+			auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::steady_clock::now() - startSteadyTime
+			).count();
+			return startSystime + diff;
 		}
 
 		// 等待直到下一个 10ms
-		uint64_t waitNextTick(uint64_t lastTime) const
+		uint64_t waitNextTick(uint64_t next)
 		{
-			uint64_t now = getCurrentElapsedTime();
-			while (now <= lastTime)
+			uint64_t now = getCurrentTime();
+			int64_t diff = next - now;
+			while (diff > 0)
 			{
-				std::this_thread::yield(); // 让出 CPU，不挂起线程，保持高响应
-				now = getCurrentElapsedTime();
+				if (diff > 2)
+				{
+#if _DEBUG
+					++sleepCount;
+#endif
+					std::this_thread::sleep_for(std::chrono::microseconds(1));
+				}
+				else
+				{
+#if _DEBUG
+					++yieldCount;
+#endif
+					std::this_thread::yield();
+				}
+				now = getCurrentTime();
+				diff = next - now;
 			}
 			return now;
 		}
 
 	private:
-		uint64_t lastTime;     //10ms单位
-		uint64_t startSystime; //10ms单位
-		uint16_t machineId;
-		uint8_t  sequence;
+		uint64_t lastTick;     //10ms单位的时间戳
+		uint64_t startSystime; //相对自定义Epoch起始系统时间戳
+#if _DEBUG
+		uint32_t sleepCount;
+		uint32_t yieldCount;
+#endif
+		uint16_t machineId;	//机器id
+		uint8_t  sequence;	//序号
 
 		// 时间锚点
 		std::chrono::steady_clock::time_point startSteadyTime;

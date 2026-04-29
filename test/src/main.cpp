@@ -22,35 +22,35 @@ extern bool testTimer();
 
 int main()
 {
-#if _WIN32 && _DEBUG
+#if _WIN32
 	SetConsoleOutputCP(CP_UTF8);
 #endif
 	spdlog::set_level(spdlog::level::debug);
 	spdlog::set_pattern("[%Y/%m/%d %H:%M:%S.%e] %^[%l] %v%$");
 
+	if (//testSignal() &&
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
-	assert(testPidfile());
+		testPidfile() &&
 #endif
-	//assert(testSignal());
-	//assert(testEvent());
-	//assert(testByteArray());
-	//assert(testMath());
-	//assert(testTimeTool());
-	//assert(testString());
-	//assert(testRingBuffer());
-	//assert(testAStar());
-	//assert(testEnum());
-	//assert(testTypeCheck());
-	//assert(testDatabase());
-	//assert(testTimer());
-	//assert(testCallstack());
-	assert(testSonyflake());
+		//testEvent() &&
+		//testByteArray() &&
+		//testMath() &&
+		//testTimeTool() &&
+		//testString() &&
+		//testRingBuffer() &&
+		//testAStar() &&
+		//testEnum() &&
+		//testTypeCheck() &&
+		//testDatabase() &&
+		//testTimer() &&
+		//testCallstack() &&
+		testSonyflake())
+	{
+		std::cout << "all tests passed!" << std::endl;
+	}
 
-	std::cout << "all tests passed!" << std::endl;
-
-#if _WIN32 && _DEBUG
+#if _WIN32
 	system("pause");
 #endif
 	return 0;
 }
-

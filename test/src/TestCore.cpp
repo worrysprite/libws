@@ -1,4 +1,5 @@
 #include <iostream>
+#include <array>
 #include <spdlog/spdlog.h>
 #include "ws/core/Signal.h"
 #include "ws/core/Sonyflake.h"
@@ -11,7 +12,6 @@
 #include "ws/core/Timer.h"
 #include "ws/core/String.h"
 #include "ws/core/RingBuffer.h"
-#include "ws/core/Utils.h"
 
 using namespace ws::core;
 
@@ -185,12 +185,7 @@ bool testMath()
 	std::cout << "length of Vector2D(3, 4) =" << v1.getLength() << std::endl;
 
 	Vector2D<double> v2(-4, 3);
-	std::cout << "angle between Vector2D(3, 4) and Vector2D(-4, 3) =" << Vector2D<double>::angleBetween(v1, v2) << std::endl;
-
-
-
-
-	std::cout << std::endl;
+	std::cout << "angle between Vector2D(3, 4) and Vector2D(-4, 3) =" << Vector2D<double>::angleBetween(v1, v2) << std::endl << std::endl;
 	return true;
 }
 
@@ -510,10 +505,19 @@ bool testSonyflake()
 	}
 
 	Sonyflake generator(machineId);
-	spdlog::debug("Sonyflake initialized with Machine ID: {}", machineId);
-	for (int i = 0; i < 10; ++i)
+	spdlog::debug("Sonyflake initialized with Machine ID: {:#X}", machineId);
+	std::array<uint64_t, 1000> outputs = { 0 };
+	for (int i = 0; i < 1000; ++i)
 	{
-		spdlog::debug("Sonyflake generated: {}", generator.nextId());
+		outputs[i] = generator.nextId();
 	}
+	for (auto id : outputs)
+	{
+		spdlog::debug("Sonyflake generated: {:#X}", id);
+	}
+#if _DEBUG
+	spdlog::debug("Sonyflake sleep count: {}", generator.getSleepCount());
+	spdlog::debug("Sonyflake yield count: {}", generator.getYieldCount());
+#endif
 	return true;
 }
