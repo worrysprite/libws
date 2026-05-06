@@ -10,7 +10,7 @@ namespace ws::core
 	{
 	public:
 		// machine_id: 0 - 65535
-		Sonyflake(uint16_t machineId) : machineId(machineId), lastTick(0), sequence(0)
+		Sonyflake(uint16_t machineId = 0) : _machineId(machineId), lastTick(0), sequence(0)
 #if _DEBUG
 			, sleepCount(0), yieldCount(0)
 #endif
@@ -44,8 +44,12 @@ namespace ws::core
 			}
 			lastTick = currentTick;
 			// 组装 ID (1bit 0 + 39bit time + 16bit machine + 8bit seq)
-			return (lastTick << 24) | (uint64_t(machineId) << 8) | uint64_t(sequence);
+			return (lastTick << 24) | (uint64_t(_machineId) << 8) | uint64_t(sequence);
 		}
+
+		// get or set machineId
+		uint16_t machineId() const { return _machineId; }
+		void machineId(uint16_t machineId) { _machineId = machineId; }
 
 #if _DEBUG
 		uint32_t getSleepCount() const
@@ -104,7 +108,7 @@ namespace ws::core
 		uint32_t sleepCount;
 		uint32_t yieldCount;
 #endif
-		uint16_t machineId;	//机器id
+		uint16_t _machineId;	//机器id
 		uint8_t  sequence;	//序号
 
 		// 时间锚点
