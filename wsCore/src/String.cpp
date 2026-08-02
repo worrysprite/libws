@@ -236,4 +236,20 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 		}
 		return result;
 	}
+
+	std::string_view ltrim(std::string_view sv)
+	{
+		sv.remove_prefix(std::min(sv.find_first_not_of(" \n\r\t\f\v"), sv.size()));
+		return sv;
+	}
+
+	std::string_view rtrim(std::string_view sv)
+	{
+		auto last = sv.find_last_not_of(" \n\r\t\f\v");
+		if (last != std::string_view::npos)
+		{
+			sv.remove_suffix(sv.size() - last - 1);
+		}
+		return sv;
+	}
 }

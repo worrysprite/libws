@@ -1,6 +1,4 @@
-#ifndef __WS_UTILS_STRING_H__
-#define __WS_UTILS_STRING_H__
-
+#pragma once
 #include <string>
 #include <time.h>
 #include <string.h>
@@ -122,7 +120,7 @@ namespace ws::core::String
 	 * 返回是否完整复制
 	 */
 	bool copy(char* dest, size_t size, const std::string& src, bool asString = true);
-	
+
 	//字符串转小写
 	void toLowercase(char* str);
 	//字符串转大写
@@ -181,6 +179,11 @@ namespace ws::core::String
 
 	//生成随机字符串，length指定长度，chars指定取值内容，未指定则使用大小写字母和数字
 	std::string random(uint16_t length, const char* chars = nullptr);
-}
 
-#endif
+	std::string_view ltrim(std::string_view sv);
+	std::string_view rtrim(std::string_view sv);
+	std::string_view trim(std::string_view sv)
+	{
+		return ltrim(rtrim(sv));
+	}
+}
