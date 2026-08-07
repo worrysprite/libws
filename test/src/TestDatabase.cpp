@@ -2,6 +2,7 @@
 #include <iostream>
 #include <variant>
 #include <chrono>
+#include <format>
 #include "ws/database/Database.h"
 
 using namespace ws::database;
@@ -18,6 +19,7 @@ struct ItemConfig
 	uint32_t		id = 0;
 	ItemType		type = (ItemType)0;
 	std::string		name;
+	std::string		createdTime;
 };
 
 class TestQuery : public DBRequest
@@ -78,33 +80,36 @@ private:
 		{
 			db.query("DROP TABLE IF EXISTS item_config");
 			db.query("CREATE TABLE item_config(`id` int unsigned not null, `name` varchar(10) null, "
-				"`type` tinyint unsigned null, primary key(id)) default charset=utf8");
-			db.query("INSERT INTO item_config VALUES(1, '《奇门遁甲》', 1), (2, '时光流韵', 2)");
-			
+				"`type` tinyint unsigned null, created_at datetime(3) default now(3), "
+				"primary key(id)) default charset=utf8mb4");
+			db.query("INSERT INTO item_config VALUES(1, '《奇门遁甲》', 1, default), (2, '时光流韵', 2, default)");
+
 			db.query("DROP PROCEDURE IF EXISTS test_proc");
 			db.query("CREATE PROCEDURE `test_proc`() BEGIN select unix_timestamp(); END");
 			break;
 		}
 		case TestQuery::QueryType::GET_ITEM_CONFIG:
 		{
-			std::string sql{ "SELECT `name`,`type` FROM item_config WHERE id=" };
+			std::string sql{ "SELECT * FROM item_config WHERE id=" };
 			sql += std::to_string(item.id);
 			if (db.query(sql))
 			{
 				auto record = db.getLastRecord();
 				if (record && record->nextRow())
 				{
-					*record >> item.name >> item.type;
+					*record >> item.id >> item.name >> item.type >> item.createdTime;
 				}
 			}
-			auto stmt = db.prepare("SELECT `name`, `type` FROM item_config WHERE id=?");
+			auto stmt = db.prepare("SELECT * FROM item_config WHERE id=?");
 			if (stmt)
 			{
 				*stmt << item.id;
 				stmt->execute();
+				local_time<microseconds> createdTime;
 				if (stmt->nextRow())
 				{
-					*stmt >> item.name >> item.type;
+					*stmt >> item.id >> item.name >> item.type >> createdTime;
+					item.createdTime = std::format("{:%F %T}", createdTime);
 				}
 			}
 			break;
@@ -209,7 +214,7 @@ bool testDatabase()
 
 	//save item
 	isComplete = false;
-	ItemConfig data{1, ItemType::EQUIP, "妖邪必败"};
+	ItemConfig data{ 1, ItemType::EQUIP, "妖邪必败" };
 	query = std::make_shared<TestQuery>();
 	query->saveItemConfig(data, [&isComplete]() {
 		std::cout << "save item complete" << std::endl;

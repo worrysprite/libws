@@ -182,7 +182,7 @@ namespace ws::core::String
 
 	std::string_view ltrim(std::string_view sv);
 	std::string_view rtrim(std::string_view sv);
-	std::string_view trim(std::string_view sv)
+	inline std::string_view trim(std::string_view sv)
 	{
 		return ltrim(rtrim(sv));
 	}

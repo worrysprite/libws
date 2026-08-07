@@ -41,10 +41,11 @@ int main()
 		//testAStar() &&
 		//testEnum() &&
 		//testTypeCheck() &&
-		//testDatabase() &&
+		testDatabase()
 		//testTimer() &&
 		//testCallstack() &&
-		testSonyflake())
+		//testSonyflake()
+		)
 	{
 		std::cout << "all tests passed!" << std::endl;
 	}

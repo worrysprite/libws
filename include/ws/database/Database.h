@@ -8,6 +8,7 @@
 #include <mutex>
 #include <thread>
 #include <memory>
+#include <chrono>
 #include <spdlog/spdlog.h>
 #include "ws/core/ByteArray.h"
 
@@ -267,7 +268,7 @@ namespace ws
 			//绑定二进制数据，会复制内容！
 			void bindBlob(void* data, unsigned long size);
 
-			//获取算术类型字段值
+			//获取算术类型字段值，数据库NULL值会得到0
 			template<typename T>
 			typename std::enable_if<std::is_arithmetic<T>::value, DBStatement>::type&
 				operator>>(T& value)
@@ -300,7 +301,7 @@ namespace ws
 				return *this;
 			}
 
-			//获取枚举类型字段值
+			//获取枚举类型字段值，数据库NULL值会得到0
 			template<typename T>
 			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
 				operator>>(T& value)
@@ -308,8 +309,12 @@ namespace ws
 				return operator>>((typename std::underlying_type<T>::type&)value);
 			}
 
-			//获取字符串字段值
+			//获取字符串字段值，数据库NULL值会得到空字符串！
 			DBStatement& operator>>(std::string& value);
+			//获取日期时间字段值，数据库NULL值不会修改value
+			DBStatement& operator>>(std::chrono::local_time<std::chrono::microseconds>& value);
+			//获取时间字段值，数据库NULL值会得到0
+			DBStatement& operator>>(std::chrono::microseconds& value);
 			//获取二进制字段值，会清空原ByteArray的数据！
 			DBStatement& operator>>(ByteArray& value);
 			//获取二进制字段值，数据长度会返回到datasize

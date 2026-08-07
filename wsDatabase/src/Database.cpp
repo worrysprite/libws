@@ -1,9 +1,6 @@
 #include "ws/database/Database.h"
 #include <string.h>
-#include <stdlib.h>
-#include <iostream>
 #include <functional>
-#include <chrono>
 #include <map>
 
 using namespace ws::database;
@@ -114,7 +111,7 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
 	{
 		paramBind.resize(numParams);
 		memset(paramBind.data(), 0, sizeof(MYSQL_BIND) * numParams);
-		for (auto &b : paramBind)
+		for (auto& b : paramBind)
 		{
 			b.length = &b.buffer_length;
 		}
@@ -178,7 +175,7 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
 	}
 }
 
-DBStatement::~DBStatement() 
+DBStatement::~DBStatement()
 {
 	for (auto& bind : resultBind)
 	{
@@ -348,7 +345,7 @@ void DBStatement::clear()
 	}
 	paramsBuffer.clear();
 
-	for (auto &bind : resultBind)
+	for (auto& bind : resultBind)
 	{
 		memset(bind.buffer, 0, bind.buffer_length);
 	}
@@ -368,6 +365,51 @@ DBStatement& DBStatement::operator>>(std::string& value)
 		else
 		{
 			value.assign((char*)b.buffer, *b.length);
+		}
+		++resultIndex;
+	}
+	else
+	{
+		spdlog::error("mysql get result out of range! sql={}", _sql.c_str());
+	}
+	return *this;
+}
+
+DBStatement& ws::database::DBStatement::operator>>(local_time<microseconds>& value)
+{
+	if (resultIndex < numResultFields())
+	{
+		auto& b = resultBind[resultIndex];
+		if (!*b.is_null && (b.buffer_type == MYSQL_TYPE_DATE ||
+			b.buffer_type == MYSQL_TYPE_DATETIME ||
+			b.buffer_type == MYSQL_TYPE_TIMESTAMP))
+		{
+			auto mytime = (MYSQL_TIME*)b.buffer;
+			auto ymd = year(mytime->year) / month(mytime->month) / day(mytime->day);
+			value = local_days(ymd) + hours{ mytime->hour } + minutes{ mytime->minute } + seconds{ mytime->second } + microseconds{ mytime->second_part };
+		}
+		++resultIndex;
+	}
+	else
+	{
+		spdlog::error("mysql get result out of range! sql={}", _sql.c_str());
+	}
+	return *this;
+}
+
+DBStatement& ws::database::DBStatement::operator>>(std::chrono::microseconds& value)
+{
+	if (resultIndex < numResultFields())
+	{
+		auto& b = resultBind[resultIndex];
+		if (*b.is_null)
+		{
+			value = 0us;
+		}
+		else if (b.buffer_type == MYSQL_TYPE_TIME)
+		{
+			auto mytime = (MYSQL_TIME*)b.buffer;
+			value = hours{ mytime->hour } + minutes{ mytime->minute } + seconds{ mytime->second } + microseconds{ mytime->second_part };
 		}
 		++resultIndex;
 	}
@@ -605,7 +647,7 @@ DBQueue::~DBQueue()
 		update();
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
-	for (auto &th : workerThreads)
+	for (auto& th : workerThreads)
 	{
 		th.isExit = true;
 		th.thread.join();
@@ -631,7 +673,7 @@ void DBQueue::setThread(size_t numThread)
 		//remove threads
 		while (workerThreads.size() > numThread)
 		{
-			auto &worker = workerThreads.back();
+			auto& worker = workerThreads.back();
 			//worker->thread->detach();
 			worker.isExit = true;
 			worker.thread.join();
@@ -657,8 +699,8 @@ void DBQueue::update()
 		tmpQueue.swap(finishQueue);
 	}
 	finishMtx.unlock();
-	
-	for (auto &request : tmpQueue)
+
+	for (auto& request : tmpQueue)
 	{
 		request->onFinish();
 	}
