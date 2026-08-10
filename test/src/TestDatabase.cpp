@@ -103,10 +103,9 @@ private:
 			auto stmt = db.prepare("SELECT * FROM item_config WHERE id=?");
 			if (stmt)
 			{
-				*stmt << item.id;
-				stmt->execute();
 				local_time<microseconds> createdTime;
-				if (stmt->nextRow())
+				*stmt << item.id;
+				if (stmt->execute() && stmt->nextRow())
 				{
 					*stmt >> item.id >> item.name >> item.type >> createdTime;
 					item.createdTime = std::format("{:%F %T}", createdTime);
@@ -202,7 +201,8 @@ bool testDatabase()
 	isComplete = false;
 	query = std::make_shared<TestQuery>();
 	query->getItemConfig(1, [&isComplete](const ItemConfig& item) {
-		std::cout << "get item result: id=" << item.id << ", type=" << (int)item.type << ", name=" << item.name << std::endl;
+		std::cout << "get item result: id=" << item.id << ", type=" << (int)item.type <<
+			", name=" << item.name << ", createdTime=" << item.createdTime << std::endl;
 		isComplete = true;
 	});
 	queue.addRequest(query);

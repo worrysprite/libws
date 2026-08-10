@@ -1,10 +1,10 @@
 #include "ws/database/Database.h"
 #include <string.h>
 #include <functional>
-#include <map>
 
 using namespace ws::database;
 using namespace std::chrono;
+using ws::core::ByteArray;
 
 //typedef bool my_bool;
 
@@ -103,7 +103,7 @@ void* Recordset::getBlob(unsigned long& datasize)
 //===================== MysqlStatement Implements ========================
 
 DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
-	stmt(mysql_stmt), _sql(sql)
+	_sql(sql), stmt(mysql_stmt)
 {
 	// bind params
 	auto numParams = mysql_stmt_param_count(stmt);
@@ -195,16 +195,9 @@ DBStatement& DBStatement::operator<<(const std::string& value)
 	if (paramIndex < numParams())
 	{
 		auto& b = paramBind[paramIndex];
-		if (value.empty())
-		{
-			b.buffer_type = MYSQL_TYPE_NULL;
-		}
-		else
-		{
-			b.buffer_type = MYSQL_TYPE_STRING;
-			b.buffer = (void*)value.data();
-			b.buffer_length = (unsigned long)value.size();
-		}
+		b.buffer_type = MYSQL_TYPE_STRING;
+		b.buffer = (void*)value.data();
+		b.buffer_length = (unsigned long)value.size();
 		++paramIndex;
 	}
 	else
@@ -219,17 +212,42 @@ DBStatement& DBStatement::bindString(const char* value, size_t length)
 	if (paramIndex < numParams())
 	{
 		auto& b = paramBind[paramIndex];
+		b.buffer_type = MYSQL_TYPE_STRING;
 		if (value && length)
 		{
-			b.buffer_type = MYSQL_TYPE_STRING;
 			auto& buffer = paramsBuffer.emplace_back(value, length);
 			b.buffer = buffer.data();
 			b.buffer_length = (unsigned long)length;
 		}
 		else
 		{
-			b.buffer_type = MYSQL_TYPE_NULL;
+			b.buffer_length = 0;
 		}
+		++paramIndex;
+	}
+	else
+	{
+		spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
+	}
+	return *this;
+}
+
+DBStatement& DBStatement::operator<<(year_month_day&& value)
+{
+	if (paramIndex < numParams())
+	{
+		auto& b = paramBind[paramIndex];
+		b.buffer_type = MYSQL_TYPE_DATE;
+		auto& buffer = paramsBuffer.emplace_back(sizeof(MYSQL_TIME), '\0');
+		MYSQL_TIME* mytime = (MYSQL_TIME*)buffer.data();
+		b.buffer = buffer.data();
+		b.buffer_length = (unsigned long)buffer.size();
+
+		mytime->time_type = MYSQL_TIMESTAMP_DATE;
+		mytime->year = static_cast<int>(value.year());
+		mytime->month = static_cast<unsigned>(value.month());
+		mytime->day = static_cast<unsigned>(value.day());
+
 		++paramIndex;
 	}
 	else
@@ -287,6 +305,21 @@ void DBStatement::bindBlob(void* data, unsigned long size)
 	}
 }
 
+DBStatement& DBStatement::operator<<(std::nullptr_t)
+{
+	if (paramIndex < numParams())
+	{
+		auto& b = paramBind[paramIndex];
+		b.buffer_type = MYSQL_TYPE_NULL;
+		++paramIndex;
+	}
+	else
+	{
+		spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
+	}
+	return *this;
+}
+
 bool DBStatement::execute()
 {
 	_numRows = 0;
@@ -295,7 +328,7 @@ bool DBStatement::execute()
 	{
 		if (mysql_stmt_bind_param(stmt, paramBind.data()))
 		{
-			spdlog::error("mysql bind params error");
+			spdlog::error("mysql bind params error: sql={}", _sql.c_str());
 			return false;
 		}
 	}
@@ -375,29 +408,7 @@ DBStatement& DBStatement::operator>>(std::string& value)
 	return *this;
 }
 
-DBStatement& ws::database::DBStatement::operator>>(local_time<microseconds>& value)
-{
-	if (resultIndex < numResultFields())
-	{
-		auto& b = resultBind[resultIndex];
-		if (!*b.is_null && (b.buffer_type == MYSQL_TYPE_DATE ||
-			b.buffer_type == MYSQL_TYPE_DATETIME ||
-			b.buffer_type == MYSQL_TYPE_TIMESTAMP))
-		{
-			auto mytime = (MYSQL_TIME*)b.buffer;
-			auto ymd = year(mytime->year) / month(mytime->month) / day(mytime->day);
-			value = local_days(ymd) + hours{ mytime->hour } + minutes{ mytime->minute } + seconds{ mytime->second } + microseconds{ mytime->second_part };
-		}
-		++resultIndex;
-	}
-	else
-	{
-		spdlog::error("mysql get result out of range! sql={}", _sql.c_str());
-	}
-	return *this;
-}
-
-DBStatement& ws::database::DBStatement::operator>>(std::chrono::microseconds& value)
+DBStatement& DBStatement::operator>>(microseconds& value)
 {
 	if (resultIndex < numResultFields())
 	{
@@ -522,8 +533,8 @@ DBStatement* Database::prepare(const std::string& sql)
 	auto iter = stmtCache.find(sql);
 	if (iter != stmtCache.end())
 	{
-		dbStmt = iter->second.get();
-		dbStmt->lastUseTime = std::chrono::steady_clock::now();
+		dbStmt = &iter->second;
+		dbStmt->lastUseTime = steady_clock::now();
 		dbStmt->clear();
 	}
 	else
@@ -538,22 +549,24 @@ DBStatement* Database::prepare(const std::string& sql)
 
 		if (stmtCache.size() >= dbConfig.maxStmtCache)
 		{
-			std::map<std::chrono::steady_clock::time_point, decltype(stmtCache)::iterator> sortedMap;
+			std::vector<decltype(stmtCache)::iterator> vec;
+			vec.reserve(stmtCache.size());
 			for (auto iter = stmtCache.begin(); iter != stmtCache.end(); ++iter)
 			{
-				sortedMap.emplace(iter->second->lastUseTime, iter);
+				vec.emplace_back(iter);
 			}
-			auto iter = sortedMap.begin();
+			std::sort(vec.begin(), vec.end(), [](auto a, auto b) {
+				return a->second.lastUseTime < b->second.lastUseTime;
+			});
 			for (uint32_t i = 0; i < dbConfig.maxStmtCache >> 1; ++i)
 			{
-				stmtCache.erase(iter->second);
-				++iter;
+				stmtCache.erase(vec[i]);
 			}
 		}
 
-		dbStmt = new DBStatement(sql, stmt);
-		dbStmt->lastUseTime = std::chrono::steady_clock::now();
-		stmtCache.emplace(sql, DBStatementPtr(dbStmt));
+		auto iter = stmtCache.try_emplace(sql, sql, stmt);
+		dbStmt = &iter.first->second;
+		dbStmt->lastUseTime = steady_clock::now();
 	}
 	return dbStmt;
 }
@@ -645,7 +658,7 @@ DBQueue::~DBQueue()
 	{
 		spdlog::debug("DBQueue waiting for db requests complete, remaining: {}", queueLength);
 		update();
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		std::this_thread::sleep_for(1s);
 	}
 	for (auto& th : workerThreads)
 	{

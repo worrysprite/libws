@@ -11,8 +11,7 @@
 #include <chrono>
 #include <spdlog/spdlog.h>
 #include "ws/core/ByteArray.h"
-
-using namespace ws::core;
+#include "ws/core/TimeTool.h"
 
 namespace ws
 {
@@ -44,7 +43,7 @@ namespace ws
 
 			//输出为算术数值
 			template<typename T>
-			typename std::enable_if<std::is_arithmetic<T>::value, Recordset>::type&
+			typename std::enable_if_t<std::is_arithmetic<T>::value, Recordset>&
 				operator>>(T& value)
 			{
 				if (mysqlRow && fieldIndex < numFields)
@@ -83,7 +82,7 @@ namespace ws
 
 			//输出为枚举
 			template<typename T>
-			typename std::enable_if<std::is_enum<T>::value, Recordset>::type&
+			typename std::enable_if_t<std::is_enum<T>::value, Recordset>&
 				operator>>(T& value)
 			{
 				return operator>>((typename std::underlying_type<T>::type&)value);
@@ -92,7 +91,7 @@ namespace ws
 			//输出为字符串
 			Recordset& operator>>(std::string& value);
 			//输出为ByteArray，必须是blob类型
-			Recordset& operator>>(ByteArray& value);
+			Recordset& operator>>(ws::core::ByteArray& value);
 
 			//获取二进制数据，必须是blob类型，需要外部释放返回的数据
 			void* getBlob(unsigned long& datasize);
@@ -108,6 +107,10 @@ namespace ws
 		};
 		using RecordsetPtr = std::unique_ptr<Recordset>;
 
+		template<template<class, class> typename T, class C, class D = std::chrono::microseconds>
+		concept isTimePoint = std::same_as<T<C, D>, std::chrono::time_point<C, D>> ||
+			std::same_as<T<C, D>, std::chrono::time_point<C, D>>;
+
 		class Database;
 		class DBStatement
 		{
@@ -118,7 +121,7 @@ namespace ws
 
 			//绑定整型参数，需要保证value的生命周期在execute()之后！
 			template<typename T>
-			typename std::enable_if<std::is_integral<T>::value, DBStatement>::type&
+			typename std::enable_if_t<std::is_integral<T>::value, DBStatement>&
 				operator<<(const T& value)
 			{
 				if (paramIndex < numParams())
@@ -152,7 +155,7 @@ namespace ws
 			}
 			//绑定整型右值参数
 			template<typename T>
-			typename std::enable_if<std::is_integral<T>::value, DBStatement>::type&
+			typename std::enable_if_t<std::is_integral<T>::value, DBStatement>&
 				operator<<(T&& value)
 			{
 				if (paramIndex < numParams())
@@ -189,7 +192,7 @@ namespace ws
 
 			//绑定浮点数参数，需要保证value的生命周期在execute()之后！
 			template<typename T>
-			typename std::enable_if<std::is_floating_point<T>::value, DBStatement>::type&
+			typename std::enable_if_t<std::is_floating_point<T>::value, DBStatement>&
 				operator<<(const T& value)
 			{
 				if (paramIndex < numParams())
@@ -216,7 +219,7 @@ namespace ws
 
 			//绑定浮点数右值参数
 			template<typename T>
-			typename std::enable_if<std::is_floating_point<T>::value, DBStatement>::type&
+			typename std::enable_if_t<std::is_floating_point<T>::value, DBStatement>&
 				operator<<(T&& value)
 			{
 				if (paramIndex < numParams())
@@ -244,7 +247,7 @@ namespace ws
 
 			//绑定枚举类型参数，需要保证value的生命周期在execute()之后！
 			template<typename T>
-			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
+			typename std::enable_if_t<std::is_enum<T>::value, DBStatement>&
 				operator<<(T& value)
 			{
 				return operator<<((typename std::underlying_type_t<T>&)value);
@@ -252,7 +255,7 @@ namespace ws
 
 			//绑定枚举类型右值参数
 			template<typename T>
-			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
+			typename std::enable_if_t<std::is_enum<T>::value, DBStatement>&
 				operator<<(T&& value)
 			{
 				return operator<<((typename std::underlying_type<T>::type&&)value);
@@ -262,15 +265,97 @@ namespace ws
 			DBStatement& operator<<(const std::string& value);
 			//绑定字符串参数，会复制字符串内容！
 			DBStatement& bindString(const char* value, size_t length);
+			//绑定时间参数，DATE类型
+			DBStatement& operator<<(std::chrono::year_month_day&& value);
+			//绑定时间参数，DATETIME或TIMESTAMP类型
+			template<template <class, class> typename T, class C, class D = std::chrono::microseconds>
+				requires isTimePoint<T, C, D>
+			DBStatement& operator<<(T<C, D>&& value)
+			{
+				using namespace std::chrono;
+				if (paramIndex < numParams())
+				{
+					auto& b = paramBind[paramIndex];
+					b.buffer_type = MYSQL_TYPE_DATETIME;
+					auto& buffer = paramsBuffer.emplace_back(sizeof(MYSQL_TIME), '\0');
+					MYSQL_TIME* mytime = (MYSQL_TIME*)buffer.data();
+					b.buffer = buffer.data();
+					b.buffer_length = (unsigned long)buffer.size();
+
+					auto date = floor<days>(value);
+					year_month_day ymd{ date };
+					hh_mm_ss hms{ value - date };
+
+					mytime->time_type = MYSQL_TIMESTAMP_DATETIME;
+					mytime->year = static_cast<int>(ymd.year());
+					mytime->month = static_cast<unsigned>(ymd.month());
+					mytime->day = static_cast<unsigned>(ymd.day());
+					mytime->hour = static_cast<unsigned>(hms.hours().count());
+					mytime->minute = static_cast<unsigned>(hms.minutes().count());
+					mytime->second = static_cast<unsigned>(hms.seconds().count());
+					mytime->second_part = static_cast<unsigned>(hms.subseconds().count());
+					++paramIndex;
+				}
+				else
+				{
+					spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
+				}
+				return *this;
+			}
+
+			//绑定时间参数，TIME类型
+			template<typename Duration>
+				requires ws::core::TimeTool::is_duration_v<Duration>
+			DBStatement& operator<<(Duration&& value)
+			{
+				using namespace std::chrono;
+				if (paramIndex < numParams())
+				{
+					auto& b = paramBind[paramIndex];
+					b.buffer_type = MYSQL_TYPE_TIME;
+					auto& buffer = paramsBuffer.emplace_back(sizeof(MYSQL_TIME), '\0');
+					MYSQL_TIME* mytime = (MYSQL_TIME*)buffer.data();
+					b.buffer = buffer.data();
+					b.buffer_length = (unsigned long)buffer.size();
+
+					microseconds::rep usec = duration_cast<microseconds>(value).count();
+					mytime->neg = usec < 0;
+					if (mytime->neg) usec = -usec;
+
+					constexpr auto USEC_PER_HOUR = 3600'000'000LL;
+					constexpr auto USEC_PER_MIN = 60'000'000LL;
+					constexpr auto USEC_PER_SEC = 1'000'000LL;
+
+					mytime->time_type = MYSQL_TIMESTAMP_TIME;
+					mytime->hour = static_cast<unsigned>(usec / USEC_PER_HOUR);
+					usec = usec % USEC_PER_HOUR;
+					mytime->month = static_cast<unsigned>(usec / USEC_PER_MIN);
+					usec = usec % USEC_PER_MIN;
+					mytime->day = static_cast<unsigned>(usec / USEC_PER_SEC);
+					++paramIndex;
+
+					if (mytime->hour > 838)
+					{
+						spdlog::warn("mysql bind time out of range(hours greater than 838)! sql={}", _sql.c_str());
+					}
+				}
+				else
+				{
+					spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
+				}
+				return *this;
+			}
 
 			//绑定二进制字节块，不会复制内容，需要保证value的生命周期在execute()之后！
-			DBStatement& operator<<(const ByteArray& value);
+			DBStatement& operator<<(const ws::core::ByteArray& value);
 			//绑定二进制数据，会复制内容！
 			void bindBlob(void* data, unsigned long size);
+			//绑定NULL值
+			DBStatement& operator<<(std::nullptr_t);
 
 			//获取算术类型字段值，数据库NULL值会得到0
 			template<typename T>
-			typename std::enable_if<std::is_arithmetic<T>::value, DBStatement>::type&
+			typename std::enable_if_t<std::is_arithmetic<T>::value, DBStatement>&
 				operator>>(T& value)
 			{
 				if (resultIndex < numResultFields())
@@ -303,7 +388,7 @@ namespace ws
 
 			//获取枚举类型字段值，数据库NULL值会得到0
 			template<typename T>
-			typename std::enable_if<std::is_enum<T>::value, DBStatement>::type&
+			typename std::enable_if_t<std::is_enum<T>::value, DBStatement>&
 				operator>>(T& value)
 			{
 				return operator>>((typename std::underlying_type<T>::type&)value);
@@ -311,12 +396,38 @@ namespace ws
 
 			//获取字符串字段值，数据库NULL值会得到空字符串！
 			DBStatement& operator>>(std::string& value);
+
+
 			//获取日期时间字段值，数据库NULL值不会修改value
-			DBStatement& operator>>(std::chrono::local_time<std::chrono::microseconds>& value);
+			template<template <class, class> typename TimePoint, class C, class D = std::chrono::microseconds>
+				requires ws::core::TimeTool::is_time_point_v<TimePoint<C, D>>
+			DBStatement& operator>>(TimePoint<C, D>& value)
+			{
+				using namespace std::chrono;
+				if (resultIndex < numResultFields())
+				{
+					auto& b = resultBind[resultIndex];
+					if (!*b.is_null && (b.buffer_type == MYSQL_TYPE_DATE ||
+						b.buffer_type == MYSQL_TYPE_DATETIME ||
+						b.buffer_type == MYSQL_TYPE_TIMESTAMP))
+					{
+						auto mytime = (MYSQL_TIME*)b.buffer;
+						auto ymd = year(mytime->year) / month(mytime->month) / day(mytime->day);
+						value = TimePoint<C, days>{ ymd } + hours{ mytime->hour } + minutes{ mytime->minute } + seconds{ mytime->second } + microseconds{ mytime->second_part };
+					}
+					++resultIndex;
+				}
+				else
+				{
+					spdlog::error("mysql get result out of range! sql={}", _sql.c_str());
+				}
+				return *this;
+			}
+
 			//获取时间字段值，数据库NULL值会得到0
 			DBStatement& operator>>(std::chrono::microseconds& value);
 			//获取二进制字段值，会清空原ByteArray的数据！
-			DBStatement& operator>>(ByteArray& value);
+			DBStatement& operator>>(ws::core::ByteArray& value);
 			//获取二进制字段值，数据长度会返回到datasize
 			void* getBlob(size_t& datasize);
 
@@ -340,18 +451,18 @@ namespace ws
 			inline const std::string& sql() const { return _sql; }
 
 		private:
-			uint32_t								paramIndex = 0;
-			uint32_t								resultIndex = 0;
-			my_ulonglong							_numRows = 0;
-			my_ulonglong							_lastInsertId = 0;
+			uint32_t		paramIndex = 0;
+			uint32_t		resultIndex = 0;
+			my_ulonglong	_numRows = 0;
+			my_ulonglong	_lastInsertId = 0;
 			MYSQL_STMT* stmt;
+
 			std::chrono::steady_clock::time_point	lastUseTime;
 			std::string								_sql;
 			std::vector<MYSQL_BIND>					paramBind;
 			std::vector<MYSQL_BIND>					resultBind;
 			std::list<std::string>					paramsBuffer;	//用于储存复制的参数的buffer
 		};
-		using DBStatementPtr = std::unique_ptr<DBStatement>;
 
 		class DBRequest
 		{
@@ -444,7 +555,7 @@ namespace ws
 			my_ulonglong									numResultRows;
 			RecordsetPtr									lastRecords;
 			std::string										lastSQL;
-			std::unordered_map<std::string, DBStatementPtr>	stmtCache;
+			std::unordered_map<std::string, DBStatement>	stmtCache;
 		};
 
 		//数据库队列
