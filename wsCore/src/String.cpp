@@ -5,6 +5,10 @@
 #include "ws/core/String.h"
 #include "ws/core/Math.h"
 
+#ifdef __linux__	//gcc 11.5暂不支持current_zone等标准库函数
+#include <iomanip>
+#endif
+
 using namespace std::chrono;
 
 namespace ws::core::String
@@ -78,15 +82,8 @@ namespace ws::core::String
 		if (time.empty())
 			return 0;
 
-#ifdef _WIN32
-		std::stringstream ss(time);
-		local_seconds tp;
-		ss >> std::chrono::parse(format, tp);
-		if (ss.fail())
-			return 0;
-
-		return current_zone()->to_sys(tp).time_since_epoch().count();
-#elif defined(__linux__) || defined(__unix__)
+#ifdef __linux__	//gcc 11.5暂不支持current_zone等标准库函数
+#include <iomanip>
 		tm datetime{};
 		std::stringstream ss(time);
 		ss >> std::get_time(&datetime, format);
@@ -94,6 +91,14 @@ namespace ws::core::String
 			return 0;
 
 		return mktime(&datetime);
+#else
+		std::stringstream ss(time);
+		local_seconds tp;
+		ss >> std::chrono::parse(format, tp);
+		if (ss.fail())
+			return 0;
+
+		return current_zone()->to_sys(tp).time_since_epoch().count();
 #endif
 	}
 
@@ -119,8 +124,7 @@ namespace ws::core::String
 		tm date = { 0 };
 #ifdef _WIN32
 		localtime_s(&date, &time);
-#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__) || \
-defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
+#elif defined(__unix__) || defined(__linux__) || defined(__APPLE__)
 		localtime_r(&time, &date);
 #endif
 		char buff[30] = { 0 };
