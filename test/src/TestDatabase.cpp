@@ -103,7 +103,7 @@ private:
 			auto stmt = db.prepare("SELECT * FROM item_config WHERE id=?");
 			if (stmt)
 			{
-				local_time<microseconds> createdTime;
+				local_time<milliseconds> createdTime;
 				*stmt << item.id;
 				if (stmt->execute() && stmt->nextRow())
 				{
@@ -115,10 +115,11 @@ private:
 		}
 		case TestQuery::QueryType::SAVE_ITEM_CONFIG:
 		{
-			auto stmt = db.prepare("UPDATE item_config SET `name`=?, `type`=? WHERE id=?");
+			auto createdTime = floor<milliseconds>(current_zone()->to_local(system_clock::now()));
+			auto stmt = db.prepare("UPDATE item_config SET `name`=?, `type`=?, `created_at`=? WHERE id=?");
 			if (stmt)
 			{
-				*stmt << item.name << item.type << item.id;
+				*stmt << item.name << item.type << createdTime << item.id;
 				stmt->execute();
 			}
 			break;

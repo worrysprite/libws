@@ -42,9 +42,8 @@ namespace ws
 			bool nextRow();
 
 			//输出为算术数值
-			template<typename T>
-			typename std::enable_if_t<std::is_arithmetic<T>::value, Recordset>&
-				operator>>(T& value)
+			template<typename T> requires std::is_arithmetic_v<T>
+			Recordset& operator>>(T& value)
 			{
 				if (mysqlRow && fieldIndex < numFields)
 				{
@@ -81,9 +80,8 @@ namespace ws
 			}
 
 			//输出为枚举
-			template<typename T>
-			typename std::enable_if_t<std::is_enum<T>::value, Recordset>&
-				operator>>(T& value)
+			template<typename T> requires std::is_enum_v<T>
+			Recordset& operator>>(T& value)
 			{
 				return operator>>((typename std::underlying_type<T>::type&)value);
 			}
@@ -107,10 +105,6 @@ namespace ws
 		};
 		using RecordsetPtr = std::unique_ptr<Recordset>;
 
-		template<template<class, class> typename T, class C, class D = std::chrono::microseconds>
-		concept isTimePoint = std::same_as<T<C, D>, std::chrono::time_point<C, D>> ||
-			std::same_as<T<C, D>, std::chrono::time_point<C, D>>;
-
 		class Database;
 		class DBStatement
 		{
@@ -120,9 +114,8 @@ namespace ws
 			~DBStatement();
 
 			//绑定整型参数，需要保证value的生命周期在execute()之后！
-			template<typename T>
-			typename std::enable_if_t<std::is_integral<T>::value, DBStatement>&
-				operator<<(const T& value)
+			template<typename T> requires std::is_integral_v<T>
+			DBStatement& operator<<(const T& value)
 			{
 				if (paramIndex < numParams())
 				{
@@ -154,9 +147,8 @@ namespace ws
 				return *this;
 			}
 			//绑定整型右值参数
-			template<typename T>
-			typename std::enable_if_t<std::is_integral<T>::value, DBStatement>&
-				operator<<(T&& value)
+			template<typename T> requires std::is_integral_v<T>
+			DBStatement& operator<<(T&& value)
 			{
 				if (paramIndex < numParams())
 				{
@@ -191,9 +183,8 @@ namespace ws
 			}
 
 			//绑定浮点数参数，需要保证value的生命周期在execute()之后！
-			template<typename T>
-			typename std::enable_if_t<std::is_floating_point<T>::value, DBStatement>&
-				operator<<(const T& value)
+			template<typename T> requires std::is_floating_point_v<T>
+			DBStatement& operator<<(const T& value)
 			{
 				if (paramIndex < numParams())
 				{
@@ -218,9 +209,8 @@ namespace ws
 			}
 
 			//绑定浮点数右值参数
-			template<typename T>
-			typename std::enable_if_t<std::is_floating_point<T>::value, DBStatement>&
-				operator<<(T&& value)
+			template<typename T> requires std::is_floating_point_v<T>
+			DBStatement& operator<<(T&& value)
 			{
 				if (paramIndex < numParams())
 				{
@@ -246,19 +236,17 @@ namespace ws
 			}
 
 			//绑定枚举类型参数，需要保证value的生命周期在execute()之后！
-			template<typename T>
-			typename std::enable_if_t<std::is_enum<T>::value, DBStatement>&
-				operator<<(T& value)
+			template<typename T> requires std::is_enum_v<T>
+			DBStatement& operator<<(const T& value)
 			{
-				return operator<<((typename std::underlying_type_t<T>&)value);
+				return operator<<((const std::underlying_type_t<T>&)(value));
 			}
 
 			//绑定枚举类型右值参数
-			template<typename T>
-			typename std::enable_if_t<std::is_enum<T>::value, DBStatement>&
-				operator<<(T&& value)
+			template<typename T> requires std::is_enum_v<T>
+			DBStatement& operator<<(T&& value)
 			{
-				return operator<<((typename std::underlying_type<T>::type&&)value);
+				return operator<<(static_cast<std::underlying_type_t<T>>(std::forward<T>(value)));
 			}
 
 			//绑定字符串参数，不会复制内容，需要保证value的生命周期在execute()之后！
@@ -268,9 +256,8 @@ namespace ws
 			//绑定时间参数，DATE类型
 			DBStatement& operator<<(std::chrono::year_month_day&& value);
 			//绑定时间参数，DATETIME或TIMESTAMP类型
-			template<template <class, class> typename T, class C, class D = std::chrono::microseconds>
-				requires isTimePoint<T, C, D>
-			DBStatement& operator<<(T<C, D>&& value)
+			template<class C, class D = std::chrono::microseconds>
+			DBStatement& operator<<(const std::chrono::time_point<C, D>& value)
 			{
 				using namespace std::chrono;
 				if (paramIndex < numParams())
@@ -329,9 +316,10 @@ namespace ws
 					mytime->time_type = MYSQL_TIMESTAMP_TIME;
 					mytime->hour = static_cast<unsigned>(usec / USEC_PER_HOUR);
 					usec = usec % USEC_PER_HOUR;
-					mytime->month = static_cast<unsigned>(usec / USEC_PER_MIN);
+					mytime->minute = static_cast<unsigned>(usec / USEC_PER_MIN);
 					usec = usec % USEC_PER_MIN;
-					mytime->day = static_cast<unsigned>(usec / USEC_PER_SEC);
+					mytime->second = static_cast<unsigned>(usec / USEC_PER_SEC);
+					mytime->second_part = static_cast<unsigned>(usec % USEC_PER_SEC);
 					++paramIndex;
 
 					if (mytime->hour > 838)
@@ -354,9 +342,8 @@ namespace ws
 			DBStatement& operator<<(std::nullptr_t);
 
 			//获取算术类型字段值，数据库NULL值会得到0
-			template<typename T>
-			typename std::enable_if_t<std::is_arithmetic<T>::value, DBStatement>&
-				operator>>(T& value)
+			template<typename T> requires std::is_arithmetic_v<T>
+			DBStatement& operator>>(T& value)
 			{
 				if (resultIndex < numResultFields())
 				{
@@ -387,9 +374,8 @@ namespace ws
 			}
 
 			//获取枚举类型字段值，数据库NULL值会得到0
-			template<typename T>
-			typename std::enable_if_t<std::is_enum<T>::value, DBStatement>&
-				operator>>(T& value)
+			template<typename T> requires std::is_enum_v<T>
+			DBStatement& operator>>(T& value)
 			{
 				return operator>>((typename std::underlying_type<T>::type&)value);
 			}
@@ -397,11 +383,9 @@ namespace ws
 			//获取字符串字段值，数据库NULL值会得到空字符串！
 			DBStatement& operator>>(std::string& value);
 
-
 			//获取日期时间字段值，数据库NULL值不会修改value
-			template<template <class, class> typename TimePoint, class C, class D = std::chrono::microseconds>
-				requires ws::core::TimeTool::is_time_point_v<TimePoint<C, D>>
-			DBStatement& operator>>(TimePoint<C, D>& value)
+			template<class C, class D = std::chrono::microseconds>
+			DBStatement& operator>>(std::chrono::time_point<C, D>& value)
 			{
 				using namespace std::chrono;
 				if (resultIndex < numResultFields())
@@ -411,9 +395,9 @@ namespace ws
 						b.buffer_type == MYSQL_TYPE_DATETIME ||
 						b.buffer_type == MYSQL_TYPE_TIMESTAMP))
 					{
-						auto mytime = (MYSQL_TIME*)b.buffer;
+						auto mytime = (const MYSQL_TIME*)b.buffer;
 						auto ymd = year(mytime->year) / month(mytime->month) / day(mytime->day);
-						value = TimePoint<C, days>{ ymd } + hours{ mytime->hour } + minutes{ mytime->minute } + seconds{ mytime->second } + microseconds{ mytime->second_part };
+						value = floor<D>(time_point<C, days>{ ymd } + hours{ mytime->hour } + minutes{ mytime->minute } + seconds{ mytime->second } + microseconds{ mytime->second_part });
 					}
 					++resultIndex;
 				}

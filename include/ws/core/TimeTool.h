@@ -14,13 +14,6 @@ namespace ws::core::TimeTool
 	template<typename T>
 	concept is_duration_v = is_duration<T>::value;
 
-	template<typename T>
-	struct is_time_point : std::false_type {};
-	template<typename Clock, typename Duration>
-	struct is_time_point<std::chrono::time_point<Clock, Duration>> : std::true_type {};
-	template<typename T>
-	concept is_time_point_v = is_time_point<T>::value;
-
 	//获取时间戳
 	template<class ClockType = std::chrono::system_clock, class Duration = std::chrono::milliseconds>
 		requires std::chrono::is_clock_v<ClockType>&& is_duration_v<Duration>
