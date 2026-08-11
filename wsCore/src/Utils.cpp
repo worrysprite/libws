@@ -5,18 +5,20 @@
 #include <Windows.h>
 #include <DbgHelp.h>
 #pragma comment(lib, "DbgHelp")
-#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+#elif defined(__linux__)
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <execinfo.h>
 #include <cxxabi.h>
 #include <dlfcn.h>
+#include <fstream>
+#include <string>
 #endif
 
 namespace ws::core
 {
-#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+#ifdef __linux__
 	bool createPidfile(const char* pidfile)
 	{
 		if (!pidfile) {
@@ -117,7 +119,7 @@ namespace ws::core
 			}
 			result[i + 1] = fmt::format(fmt::runtime(format), i, symbol->Address, symbol->Name, line.FileName, line.LineNumber);
 		}
-#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+#elif defined(__linux__)
 		// must compile with -rdynamic
 		// 获取栈中各层调用函数地址
 		int numFrames = backtrace(stack, MAX_STACK);
