@@ -3,6 +3,7 @@
 #include <string.h>
 #include <type_traits>
 #include <stdexcept>
+#include <cstdint>
 
 namespace ws
 {

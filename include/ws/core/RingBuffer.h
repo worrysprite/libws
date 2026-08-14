@@ -2,6 +2,7 @@
 #include <string>
 #include <string.h>
 #include <type_traits>
+#include <cstdint>
 
 namespace ws
 {
