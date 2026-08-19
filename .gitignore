@@ -1,5 +1,7 @@
 .vs/
 .vscode/
+.workbuddy/
+.cursor/
 build/
 3rd/
 vcpkg_installed/

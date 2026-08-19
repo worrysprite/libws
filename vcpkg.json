@@ -6,12 +6,13 @@
 	"dependencies": [
 		{
 			"name": "libmysql",
-			"version>=": "8.0.40",
-			"platform": "windows"
+			"version>=": "8.0.40"
 		},
 		{
 			"name": "spdlog",
 			"version>=": "1.15.3"
-		}
+		},
+		"openssl",
+		"curl"
 	]
 }

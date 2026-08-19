@@ -1,13 +1,30 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.11)
+
+# 必须在 project() 之前设置，vcpkg toolchain 才能生效
+if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+	if(DEFINED ENV{VCPKG_ROOT})
+		set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+	elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/vcpkg/scripts/buildsystems/vcpkg.cmake")
+		set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/extern/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+	endif()
+endif()
+
 PROJECT(libws)
 
 SET(CMAKE_CXX_STANDARD_REQUIRED 20)
 SET(CMAKE_CXX_STANDARD 20)
 
+message(STATUS "Vcpkg toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+
+find_package(spdlog CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
+find_package(unofficial-libmysql REQUIRED)
+find_package(CURL REQUIRED)
+find_package(Threads REQUIRED)
+
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
 if (MSVC)
 SET(BUILD_SHARED_LIBS false)
-INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/3rd/spdlog/include")
 add_compile_options("/std:c++20" "/utf-8" "/MP" "$<$<CONFIG:RELEASE>:/O2>")
 
 elseif (CMAKE_COMPILER_IS_GNUCXX)
