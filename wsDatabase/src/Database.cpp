@@ -1,12 +1,11 @@
 #include "ws/database/Database.h"
 #include <string.h>
 #include <functional>
+#include <type_traits>
 
 using namespace ws::database;
 using namespace std::chrono;
 using ws::core::ByteArray;
-
-//typedef bool my_bool;
 
 //===================== Recordset Implements ========================
 Recordset::Recordset(MYSQL_RES* res, const std::string& sql) :
@@ -102,8 +101,8 @@ void* Recordset::getBlob(unsigned long& datasize)
 
 //===================== MysqlStatement Implements ========================
 
-DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
-	_sql(sql), stmt(mysql_stmt)
+DBStatement::DBStatement(MYSQL_STMT* mysql_stmt, const std::string& sql) :
+	stmt(mysql_stmt), _sql(sql)
 {
 	// bind params
 	auto numParams = mysql_stmt_param_count(stmt);
@@ -164,8 +163,8 @@ DBStatement::DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt) :
 			b.is_unsigned = (fields[i].flags & UNSIGNED_FLAG) > 0;
 			b.buffer = malloc(buffer_length);
 			b.buffer_length = buffer_length;
-			b.is_null = new bool;
-			b.length = new unsigned long;
+			b.is_null = new my_bool(false);
+			b.length = new unsigned long(0);
 		}
 		if (mysql_stmt_bind_result(stmt, resultBind.data()))
 		{
@@ -564,7 +563,7 @@ DBStatement* Database::prepare(const std::string& sql)
 			}
 		}
 
-		auto iter = stmtCache.try_emplace(sql, sql, stmt);
+		auto iter = stmtCache.try_emplace(sql, stmt, sql);
 		dbStmt = &iter.first->second;
 		dbStmt->lastUseTime = steady_clock::now();
 	}

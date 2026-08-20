@@ -2,15 +2,16 @@
 	"$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
 	"name": "libws",
 	"version": "1.0.0",
-	"builtin-baseline": "4acadb7d732e662bbf130c4849be6d3a0aa6f6b9",
+	"builtin-baseline": "94a541197763a4f449a1b91478df48c0584a6256",
 	"dependencies": [
 		{
 			"name": "libmysql",
-			"version>=": "8.0.40"
+			"version>=": "8.0.40",
+			"platform": "windows"
 		},
 		{
 			"name": "spdlog",
-			"version>=": "1.15.3"
+			"version>=": "1.17.0"
 		},
 		"openssl",
 		"curl"

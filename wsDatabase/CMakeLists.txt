@@ -6,6 +6,6 @@ ADD_LIBRARY(${PROJECT_NAME} ${wsdatabase_src})
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}
 	PUBLIC
 		wsCore
-		unofficial::libmysql::libmysql
+		${LIBWS_MYSQL_TARGET}
 		spdlog::spdlog
 )

@@ -110,7 +110,7 @@ namespace ws
 		{
 			friend class Database;
 		public:
-			DBStatement(const std::string& sql, MYSQL_STMT* mysql_stmt);
+			DBStatement(MYSQL_STMT* mysql_stmt, const std::string& sql);
 			~DBStatement();
 
 			//绑定整型参数，需要保证value的生命周期在execute()之后！
