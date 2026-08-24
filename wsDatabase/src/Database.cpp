@@ -7,6 +7,10 @@ using namespace ws::database;
 using namespace std::chrono;
 using ws::core::ByteArray;
 
+#if defined(MYSQL_VERSION_ID) && MYSQL_VERSION_ID >= 80001
+typedef bool my_bool;
+#endif
+
 //===================== Recordset Implements ========================
 Recordset::Recordset(MYSQL_RES* res, const std::string& sql) :
 	fieldIndex(0), mysqlRow(nullptr), mysqlRes(res), sql(sql)
