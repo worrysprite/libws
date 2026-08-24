@@ -180,6 +180,11 @@
   <ItemGroup>
     <ClInclude Include="..\include\ws\database\Database.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\wsCore\wsCore.vcxproj">
+      <Project>{3241912f-c643-456a-b900-421997aa7c61}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
