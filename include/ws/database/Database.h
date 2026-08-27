@@ -476,8 +476,7 @@ namespace ws
 			//检测连接状态
 			inline bool isConnected() const
 			{
-				if (mysql == nullptr) return false;
-				return mysql_ping(mysql) == 0;
+				return mysql && mysql_ping(mysql) == 0;
 			}
 
 			//上次查询影响行数

@@ -487,22 +487,20 @@ void Database::setDBConfig(const MySQLConfig& config)
 bool Database::logon()
 {
 	static std::mutex initMtx;
-	initMtx.lock();
+	std::lock_guard<std::mutex> lock(initMtx);
 	logoff();
 	mysql = mysql_init(nullptr);
-	initMtx.unlock();
 	if (!mysql)
 		return false;
 
 	//此处不能使用自动连接，因为缓存了statement，连接断开时缓存失效必须清理重连
-	if (mysql == mysql_real_connect(mysql, dbConfig.host.c_str(),
-		dbConfig.user.c_str(), dbConfig.password.c_str(),
-		dbConfig.database.c_str(), dbConfig.port, dbConfig.unixSock.c_str(),
+	if (mysql == mysql_real_connect(mysql, dbConfig.host.c_str(), dbConfig.user.c_str(),
+		dbConfig.password.c_str(), dbConfig.database.c_str(), dbConfig.port, dbConfig.unixSock.c_str(),
 		CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS))
 	{
 		mysql_set_character_set(mysql, dbConfig.characterset.c_str());
 		mysql_autocommit(mysql, dbConfig.autoCommit);
-		spdlog::info("mysql connect successful.");
+		spdlog::debug("mysql connect successful.");
 		return true;
 	}
 	spdlog::error("Failed to connect to mysql: {}", mysql_error(mysql));
@@ -661,7 +659,7 @@ DBQueue::~DBQueue()
 	{
 		spdlog::debug("DBQueue waiting for db requests complete, remaining: {}", queueLength);
 		update();
-		std::this_thread::sleep_for(1s);
+		std::this_thread::sleep_for(100ms);
 	}
 	for (auto& th : workerThreads)
 	{
@@ -739,7 +737,7 @@ void DBQueue::DBWorkThread(const WorkerThread& worker)
 {
 	Database db;
 	db.setDBConfig(config);
-
+	
 	DBRequestPtr request;
 	while (!worker.isExit)
 	{
