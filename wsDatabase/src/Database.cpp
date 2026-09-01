@@ -495,7 +495,8 @@ bool Database::logon()
 
 	//此处不能使用自动连接，因为缓存了statement，连接断开时缓存失效必须清理重连
 	if (mysql == mysql_real_connect(mysql, dbConfig.host.c_str(), dbConfig.user.c_str(),
-		dbConfig.password.c_str(), dbConfig.database.c_str(), dbConfig.port, dbConfig.unixSock.c_str(),
+		dbConfig.password.c_str(), dbConfig.database.c_str(), dbConfig.port,
+		dbConfig.unixSock.empty() ? nullptr : dbConfig.unixSock.c_str(),
 		CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS))
 	{
 		mysql_set_character_set(mysql, dbConfig.characterset.c_str());
