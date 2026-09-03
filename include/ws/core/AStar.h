@@ -1,10 +1,10 @@
 #ifndef __WS_CORE_ASTAR_H__
 #define __WS_CORE_ASTAR_H__
 
-#include <list>
-#include <set>
-#include <functional>
 #include "Math.h"
+#include <functional>
+#include <list>
+#include <vector>
 
 //#define _DEBUG_ASTAR
 
@@ -27,57 +27,61 @@ namespace ws
 		class PathNode
 		{
 		public:
-			PathNode(int x = 0, int y = 0) : x(x), y(y),
-				h(0), g(0), f(0), isClosed(false), parent(nullptr) {}
+			PathNode(int x = 0, int y = 0)
+				: x(x), y(y), h(0), g(0), f(0), isClosed(false), generation(0), parent(nullptr)
+			{
+			}
 
-			int x;
-			int y;
-			double h;
-			double g;
-			double f;
-			bool isClosed;
+			int      x;
+			int      y;
+			double   h;
+			double   g;
+			double   f;
+			bool     isClosed;
+			uint32_t generation;
 
 			PathNode* parent;
-
-			struct Compare
-			{
-				bool operator()(const PathNode* a, const PathNode* b) const
-				{
-					if (a->f == b->f)
-						return a < b;
-					return a->f < b->f;
-				}
-			};
 		};
 
 		class AStar
 		{
 		public:
-			AStar(int max = 512) :count(0), maxCount(max) {}
+			AStar(int max = 512) : count(0), maxCount(max), searchGeneration(0) {}
 			~AStar();
 			//寻路，返回是否成功
-			bool findPath(const AbstractMap& map, int startX, int startY, int endX, int endY, void* userdata = nullptr);
+			bool findPath(
+				const AbstractMap& map, int startX, int startY, int endX, int endY,
+				void* userdata = nullptr
+			);
 			//获取上次寻路的结果
 			const std::list<const PathNode*>& getLastPath() const { return lastPath; }
 
 			//计算估值函数，参数起点x,y 终点x,y 返回估值
-			std::function<double(int, int, int, int)>			heuristic;
+			std::function<double(int, int, int, int)> heuristic;
 			//计算代价函数，参数当前x,y 目标x,y 返回代价
-			std::function<double(int, int, int, int)>			getCost;
+			std::function<double(int, int, int, int)> getCost;
 
 		private:
-			int					count;		//搜索次数
-			int					maxCount;	//搜索次数上限
+			struct HeapItem
+			{
+				double    f = 0;
+				PathNode* node = nullptr;
+			};
 
-			std::set<PathNode*, PathNode::Compare>	openList;
-			std::list<const PathNode*>	lastPath;
+			int      count;            //搜索次数
+			int      maxCount;         //搜索次数上限
+			uint32_t searchGeneration; //代数戳，替代整图 memset
 
-			std::vector<PathNode*>	mapNodes;
+			std::vector<HeapItem>       openHeap;
+			std::list<const PathNode*>  lastPath;
+			std::vector<PathNode*>      mapNodes;
 
 			//计算地图尺寸，不够就要扩容
 			void resizeMap(int w, int h);
-			//获取x,y对应的节点
+			//获取x,y对应的节点（按当前代数初始化）
 			PathNode* getNode(int x, int y, int width);
+			void      pushOpen(PathNode* node);
+			PathNode* popOpen();
 
 			//哈曼顿估值函数
 			static double manhattanDistance(int x, int y, int endX, int endY)
@@ -90,21 +94,19 @@ namespace ws
 			{
 				if (x1 != x2 && y1 != y2)
 				{
-					return 1.414;	//斜线方向代价1.414
+					return 1.414; //斜线方向代价1.414
 				}
-				return 1.0;	//直线方向代价1.0
+				return 1.0; //直线方向代价1.0
 			}
 
 		private:
 #ifdef _DEBUG_ASTAR
-			std::vector<char*>		debugGraph;
-			void initDebug(const AbstractMap& map, PathNode* end);
-			void debug(PathNode* node, const char symbol);
+			std::vector<char*> debugGraph;
+			void               initDebug(const AbstractMap& map, PathNode* end);
+			void               debug(PathNode* node, const char symbol);
 #endif // _DEBUG_ASTAR
 		};
 	}
 }
-
-
 
 #endif
