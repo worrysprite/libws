@@ -27,8 +27,7 @@ namespace ws::core::TimeTool
 	{
 #ifdef _WIN32
 		localtime_s(&date, &t);
-#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__) || \
-defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
+#elif defined(__linux__) || defined(__unix__) || defined(__APPLE__)
 		localtime_r(&t, &date);
 #endif
 	}
@@ -38,8 +37,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 	{
 #ifdef _WIN32
 		gmtime_s(&date, &t);
-#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__) || \
-defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
+#elif defined(__linux__) || defined(__unix__) || defined(__APPLE__)
 		gmtime_r(&t, &date);
 #endif
 	}
@@ -49,8 +47,7 @@ defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && 
 	{
 #ifdef _WIN32
 		return GetTickCount64();
-#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__) || \
-defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
+#elif defined(__linux__) || defined(__unix__) || defined(__APPLE__)
 		struct timespec ts;
 		clock_gettime(CLOCK_MONOTONIC, &ts);
 		return (ts.tv_sec * 1000ULL + ts.tv_nsec / 1000000);

@@ -165,7 +165,7 @@ namespace ws::core
 		static constexpr bool value = is_shared_ptr<T>::value || is_unique_ptr<T>::value;
 	};
 
-#if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+#if defined(__linux__)
 	bool createPidfile(const char* pidfile);
 
 #pragma GCC diagnostic push
