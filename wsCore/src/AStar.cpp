@@ -1,6 +1,8 @@
 #include "ws/core/AStar.h"
-#include <memory>
+#include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <memory>
 #include <spdlog/spdlog.h>
 #ifdef _DEBUG_ASTAR
 #include <iostream>
@@ -21,24 +23,59 @@ namespace ws
 			}
 		}
 
-		bool AStar::findPath(const AbstractMap& map, int startX, int startY, int endX, int endY, void* userdata)
+		void AStar::pushOpen(PathNode* node)
+		{
+			openHeap.push_back(HeapItem{node->f, node});
+			std::push_heap(openHeap.begin(), openHeap.end(), [](const HeapItem& a, const HeapItem& b)
+			{ return a.f > b.f; });
+		}
+
+		PathNode* AStar::popOpen()
+		{
+			while (!openHeap.empty())
+			{
+				std::pop_heap(
+					openHeap.begin(), openHeap.end(),
+					[](const HeapItem& a, const HeapItem& b) { return a.f > b.f; }
+				);
+				auto item = openHeap.back();
+				openHeap.pop_back();
+				//懒删除：过期或已关闭的堆条目跳过
+				if (item.node->generation != searchGeneration || item.node->isClosed)
+					continue;
+				if (item.f != item.node->f)
+					continue;
+				return item.node;
+			}
+			return nullptr;
+		}
+
+		bool AStar::findPath(
+			const AbstractMap& map, int startX, int startY, int endX, int endY, void* userdata
+		)
 		{
 			//清空上次路径
 			lastPath.clear();
+			openHeap.clear();
 
 			if (startX == endX && startY == endY)
 				return true;
 
 			if (map.isBlock(endX, endY, userdata))
 				return false;
-			
+
 			resizeMap(map.getWidth(), map.getHeight());
-			for (auto nodes : mapNodes)
+
+			++searchGeneration;
+			if (searchGeneration == 0)
 			{
-				memset(static_cast<void*>(nodes), 0, sizeof(PathNode) * NUM_NODE_SIZE);
+				//代数溢出时才整图清一次
+				for (auto nodes : mapNodes)
+					memset(static_cast<void*>(nodes), 0, sizeof(PathNode) * NUM_NODE_SIZE);
+				searchGeneration = 1;
 			}
 
-			if (!heuristic)	//未指定估值函数，默认使用哈曼顿估值函数
+			if (!heuristic) //未指定估值函数，默认使用哈曼顿估值函数
 			{
 				heuristic = AStar::manhattanDistance;
 			}
@@ -52,26 +89,26 @@ namespace ws
 			if (!start || !end)
 			{
 				spdlog::error("{} invalid arguments!", __FUNCTION__);
-				return false;		//参数错误无法寻路
+				return false; //参数错误无法寻路
 			}
 #ifdef _DEBUG_ASTAR
 			initDebug(map, end);
 #endif
 			count = 0;
-			openList.insert(start);
+			pushOpen(start);
 
 			PathNode* current = nullptr;
-			while (count++ < maxCount && !openList.empty())
+			while (count++ < maxCount)
 			{
-				auto beg = openList.begin();
-				current = *beg;
-				openList.erase(beg);
+				current = popOpen();
+				if (!current)
+					break;
 
 #ifdef _DEBUG_ASTAR
 				debug(current, 'o');
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #endif
-				if (current == end)	//找到终点
+				if (current == end) //找到终点
 				{
 					while (current->parent)
 					{
@@ -88,33 +125,34 @@ namespace ws
 				//遍历周围的格子
 				for (int x = current->x - 1; x <= current->x + 1; ++x)
 				{
-					if (x < 0 || static_cast<uint32_t>(x) >= map.getWidth()) continue;	//超出地图范围
+					if (x < 0 || static_cast<uint32_t>(x) >= map.getWidth())
+						continue; //超出地图范围
 					for (int y = current->y - 1; y <= current->y + 1; ++y)
 					{
-						if (y < 0 || static_cast<uint32_t>(y) >= map.getHeight()) continue;	//超出地图范围
+						if (y < 0 || static_cast<uint32_t>(y) >= map.getHeight())
+							continue; //超出地图范围
 
 						if (x == current->x && y == current->y)
-							continue;	//当前点
+							continue; //当前点
 
 						if (map.isBlock(x, y, userdata))
-							continue;	//阻挡点
+							continue; //阻挡点
 
 						auto node = getNode(x, y, map.getWidth());
 						if (node->isClosed)
-							continue;	//已经检查过
+							continue; //已经检查过
 
 						//计算估值
 						double g = current->g + getCost(current->x, current->y, x, y);
-						
+
 						if (node->g)
 						{
 							if (g < node->g)
 							{
-								openList.erase(node);
 								node->g = g;
 								node->f = g + node->h;
 								node->parent = current;
-								openList.insert(node);
+								pushOpen(node); //懒更新，旧堆项弹出时丢弃
 							}
 						}
 						else
@@ -123,12 +161,12 @@ namespace ws
 							node->g = g;
 							node->f = g + node->h;
 							node->parent = current;
-							openList.insert(node);
+							pushOpen(node);
 						}
 					}
 				}
 			}
-			openList.clear();
+			openHeap.clear();
 			return !lastPath.empty();
 		}
 
@@ -157,8 +195,22 @@ namespace ws
 			if (static_cast<size_t>(row) < mapNodes.size())
 			{
 				PathNode* node = &mapNodes[row][col];
-				node->x = x;
-				node->y = y;
+				if (node->generation != searchGeneration)
+				{
+					node->x = x;
+					node->y = y;
+					node->h = 0;
+					node->g = 0;
+					node->f = 0;
+					node->isClosed = false;
+					node->parent = nullptr;
+					node->generation = searchGeneration;
+				}
+				else
+				{
+					node->x = x;
+					node->y = y;
+				}
 				return node;
 			}
 			return nullptr;
