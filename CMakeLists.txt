@@ -70,6 +70,7 @@ endforeach ()
 
 option(LIBWS_BUILD_TESTS "Build libws tests" ${LIBWS_IS_TOP_LEVEL})
 if (LIBWS_BUILD_TESTS)
+	enable_testing()
 	ADD_SUBDIRECTORY(test)
 endif ()
 

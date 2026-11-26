@@ -3,8 +3,10 @@
 #include <thread>
 #include <functional>
 #include <mutex>
+#include <atomic>
 #include <forward_list>
 #include <memory>
+#include <unordered_map>
 
 using namespace std::chrono;
 
@@ -75,7 +77,7 @@ namespace ws
 			uint32_t						tick = 0;
 			uint32_t						lastID = 0;
 			
-			bool							isExit = false;
+			std::atomic<bool>				isExit{ false };
 			ScheduleList					nearFuture[NEAR_FUTURE];
 			ScheduleList					farFuture[NUM_FAR_WHEEL][FAR_FUTURE];
 			ScheduleList					dispatchList;

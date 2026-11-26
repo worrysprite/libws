@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <cstdlib>
 #include <iostream>
 #include <spdlog/spdlog.h>
 
@@ -19,6 +20,14 @@ extern bool testSonyflake();
 extern bool testPidfile();
 #endif
 extern bool testTimer();
+extern bool testServerSocket();
+extern bool testClientSocket();
+
+static bool envTruthy(const char* name)
+{
+	const char* v = std::getenv(name);
+	return v && v[0] && !(v[0] == '0' && v[1] == '\0');
+}
 
 int main()
 {
@@ -28,30 +37,41 @@ int main()
 	spdlog::set_level(spdlog::level::debug);
 	spdlog::set_pattern("[%Y/%m/%d %H:%M:%S.%e] %^[%l] %v%$");
 
-	if (//testSignal() &&
+	bool ok = true;
+	ok = testSignal() && ok;
+	ok = testEvent() && ok;
+	ok = testByteArray() && ok;
+	ok = testMath() && ok;
+	ok = testTimeTool() && ok;
+	ok = testString() && ok;
+	ok = testRingBuffer() && ok;
+	ok = testEnum() && ok;
+	ok = testTypeCheck() && ok;
+	ok = testAStar() && ok;
+	ok = testSonyflake() && ok;
+	ok = testServerSocket() && ok;
+	ok = testClientSocket() && ok;
 #if defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
-		testPidfile() &&
+	ok = testPidfile() && ok;
 #endif
-		//testEvent() &&
-		//testByteArray() &&
-		//testMath() &&
-		//testTimeTool() &&
-		//testString() &&
-		//testRingBuffer() &&
-		//testAStar() &&
-		//testEnum() &&
-		//testTypeCheck() &&
-		testDatabase()
-		//testTimer() &&
-		//testCallstack() &&
-		//testSonyflake()
-		)
+
+	// 耗时较长的 Timer 默认跳过；设置 LIBWS_RUN_TIMER_TEST=1 启用
+	if (envTruthy("LIBWS_RUN_TIMER_TEST"))
+		ok = testTimer() && ok;
+	else
+		std::cout << "skip testTimer (set LIBWS_RUN_TIMER_TEST=1 to enable)" << std::endl;
+
+	// DB 需要本机 MySQL；默认跳过，设 LIBWS_RUN_DB_TEST=1 启用（可用 LIBWS_MYSQL_* 覆盖连接）
+	if (envTruthy("LIBWS_RUN_DB_TEST"))
+		ok = testDatabase() && ok;
+	else
+		std::cout << "skip testDatabase (set LIBWS_RUN_DB_TEST=1 to enable)" << std::endl;
+
+	if (ok)
 	{
 		std::cout << "all tests passed!" << std::endl;
+		return 0;
 	}
-
-#if _WIN32
-	system("pause");
-#endif
-	return 0;
+	std::cout << "some tests failed!" << std::endl;
+	return 1;
 }

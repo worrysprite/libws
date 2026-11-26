@@ -9,8 +9,7 @@ using namespace ws::network;
 //===================== Client Implements ========================
 // socket threads
 Client::Client() : id(0), lastActiveTime(0), socket(0), server(nullptr),
-	readerBuffer(BUFFER_SIZE), writerBuffer(BUFFER_SIZE),
-	isClosing(false), hasNewData(false)
+	readerBuffer(BUFFER_SIZE), writerBuffer(BUFFER_SIZE)
 {
 	memset(&addr, 0, sizeof(addr));
 }
@@ -846,6 +845,10 @@ void ServerSocket::flushClient(ClientPtr client)
     {
         struct kevent evt;
         EV_SET(&evt, client->socket, EVFILT_WRITE, EV_ENABLE, 0, 0, client.get());
+        if (kevent(kqfd, &evt, 1, nullptr, 0, nullptr) < 0)
+        {
+            spdlog::error("kevent enable write error: {}", strerror(errno));
+        }
     }
 }
 
@@ -876,7 +879,11 @@ void ServerSocket::writeFromBuffer(Client& client, uint32_t limitLength)
     if (!bytes.readAvailable())
     {
         struct kevent evt;
-        EV_SET(&evt, client.socket, EVFILT_WRITE, EV_DISABLE, 0, 0, client);
+        EV_SET(&evt, client.socket, EVFILT_WRITE, EV_DISABLE, 0, 0, &client);
+        if (kevent(kqfd, &evt, 1, nullptr, 0, nullptr) < 0)
+        {
+            spdlog::error("kevent disable write error: {}", strerror(errno));
+        }
     }
 }
 

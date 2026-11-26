@@ -32,18 +32,18 @@ namespace ws
 			//赋值
 			RingBuffer& operator=(const RingBuffer& other)
 			{
-				_capacity = other._capacity;
-				_data = (uint8_t*)malloc(_capacity);
-				if (!_data)
-					throw std::bad_alloc();
-				memcpy(_data, other._data, _capacity);
-				_readPos = other._readPos;
-				_writePos = other._writePos;
+				if (this == &other)
+					return *this;
+				RingBuffer tmp(other);
+				swap(tmp);
 				return *this;
 			}
 			//移动赋值
-			constexpr RingBuffer& operator=(RingBuffer&& rvalue) noexcept
+			RingBuffer& operator=(RingBuffer&& rvalue) noexcept
 			{
+				if (this == &rvalue)
+					return *this;
+				free(_data);
 				_data = rvalue._data;
 				_readPos = rvalue._readPos;
 				_writePos = rvalue._writePos;
@@ -103,6 +103,8 @@ namespace ws
 				readNumber() const
 			{
 				T value(0);
+				if (used() < sizeof(T))
+					return value;
 				readData(&value, sizeof(T));
 				return value;
 			}
@@ -125,19 +127,42 @@ namespace ws
 				value.resize(readData(value.data(), length));
 				return value;
 			}
-			std::string readString() const { return readString(readUInt16()); }
+			std::string readString() const
+			{
+				if (used() < sizeof(uint16_t))
+					return {};
+				const size_t savedPos = _readPos;
+				uint16_t len = readUInt16();
+				if (used() < len)
+				{
+					_readPos = savedPos;
+					return {};
+				}
+				return readString(len);
+			}
 
 			template<class T>
 			const RingBuffer& operator>>(T& val) const
 			{
+				if (used() < sizeof(T))
+					return *this;
 				readData(&val, sizeof(T));
 				return *this;
 			}
 
-			//以2字节长度做前缀读取字符串
+			//以2字节长度做前缀读取字符串；不足时不推进游标
 			const RingBuffer& operator>>(std::string& val) const
 			{
-				val = readString();
+				if (used() < sizeof(uint16_t))
+					return *this;
+				const size_t savedPos = _readPos;
+				uint16_t len = readUInt16();
+				if (used() < len)
+				{
+					_readPos = savedPos;
+					return *this;
+				}
+				val = readString(len);
 				return *this;
 			}
 

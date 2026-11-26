@@ -81,12 +81,14 @@ Recordset& Recordset::operator>>(ByteArray& value)
 void* Recordset::getBlob(unsigned long& datasize)
 {
 	void* data = nullptr;
+	datasize = 0;
 	if (mysqlRow && fieldIndex < numFields)
 	{
 		MYSQL_FIELD* field = mysql_fetch_field_direct(mysqlRes, fieldIndex);
 		if (IS_BLOB(field->type))
 		{
-			datasize = field->max_length;
+			auto lengths = mysql_fetch_lengths(mysqlRes);
+			datasize = lengths[fieldIndex];
 			if (datasize > 0)
 			{
 				const char* szRow = mysqlRow[fieldIndex];
@@ -161,7 +163,13 @@ DBStatement::DBStatement(MYSQL_STMT* mysql_stmt, const std::string& sql) :
 				buffer_length = sizeof(MYSQL_TIME);
 				break;
 			default:
+				// TEXT/BLOB 的 fields[i].length 可能极大（如 LONGBLOB），限制绑定缓冲避免 OOM
 				buffer_length = fields[i].length;
+				constexpr unsigned long kMaxBindBuffer = 16ul * 1024ul * 1024ul;
+				if (buffer_length > kMaxBindBuffer)
+					buffer_length = kMaxBindBuffer;
+				if (buffer_length == 0)
+					buffer_length = 256;
 				break;
 			}
 			b.is_unsigned = (fields[i].flags & UNSIGNED_FLAG) > 0;
@@ -195,19 +203,8 @@ DBStatement::~DBStatement()
 
 DBStatement& DBStatement::operator<<(const std::string& value)
 {
-	if (paramIndex < numParams())
-	{
-		auto& b = paramBind[paramIndex];
-		b.buffer_type = MYSQL_TYPE_STRING;
-		b.buffer = (void*)value.data();
-		b.buffer_length = (unsigned long)value.size();
-		++paramIndex;
-	}
-	else
-	{
-		spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
-	}
-	return *this;
+	// 默认拷贝到 paramsBuffer，避免调用方临时字符串在 execute 前失效
+	return bindString(value.data(), value.size());
 }
 
 DBStatement& DBStatement::bindString(const char* value, size_t length)
@@ -262,25 +259,11 @@ DBStatement& DBStatement::operator<<(year_month_day&& value)
 
 DBStatement& DBStatement::operator<<(const ByteArray& value)
 {
-	if (paramIndex < numParams())
-	{
-		auto& b = paramBind[paramIndex];
-		if (value.size())
-		{
-			b.buffer_type = MYSQL_TYPE_BLOB;
-			b.buffer = (void*)value.data();
-			b.buffer_length = (unsigned long)value.size();
-		}
-		else
-		{
-			b.buffer_type = MYSQL_TYPE_NULL;
-		}
-		++paramIndex;
-	}
+	// 默认拷贝到 paramsBuffer，避免 ByteArray 生命周期短于 execute
+	if (value.size())
+		bindBlob(const_cast<void*>(value.data()), (unsigned long)value.size());
 	else
-	{
-		spdlog::error("mysql bind params out of range! sql={}", _sql.c_str());
-	}
+		*this << nullptr;
 	return *this;
 }
 
@@ -327,6 +310,11 @@ bool DBStatement::execute()
 {
 	_numRows = 0;
 	_lastInsertId = 0;
+	// 复用缓存语句前释放上次 store 的结果集，否则二次执行可能失败
+	if (!resultBind.empty())
+	{
+		mysql_stmt_free_result(stmt);
+	}
 	if (!paramBind.empty())
 	{
 		if (mysql_stmt_bind_param(stmt, paramBind.data()))
@@ -364,8 +352,8 @@ bool DBStatement::nextRow()
 	case MYSQL_NO_DATA:
 		return false;
 	case MYSQL_DATA_TRUNCATED:
-		spdlog::warn("mysql fetch truncated! sql={}", _sql.c_str());
-		return true;
+		spdlog::error("mysql fetch truncated! sql={}", _sql.c_str());
+		return false;
 	default:
 		spdlog::error("mysql fetch error: {}", mysql_stmt_error(stmt));
 		return false;
@@ -374,6 +362,10 @@ bool DBStatement::nextRow()
 
 void DBStatement::clear()
 {
+	if (stmt)
+	{
+		mysql_stmt_free_result(stmt);
+	}
 	memset(paramBind.data(), 0, sizeof(MYSQL_BIND) * paramBind.size());
 	for (auto& b : paramBind)
 	{
@@ -748,7 +740,7 @@ void DBQueue::DBWorkThread(const WorkerThread& worker)
 			continue;
 		}
 		int retries = 0;
-		while (!db.isConnected())
+		while (!worker.isExit && !db.isConnected())
 		{
 			if (retries > 0)
 			{
@@ -757,6 +749,14 @@ void DBQueue::DBWorkThread(const WorkerThread& worker)
 			}
 			db.logon();
 			++retries;
+		}
+		if (worker.isExit)
+		{
+			// 关机时把未处理请求放回队列，避免挂死在重连循环且丢失请求
+			std::lock_guard<std::mutex> lock(workMtx);
+			workQueue.push_front(request);
+			workQueueLength = workQueue.size();
+			break;
 		}
 		request->onRequest(db);
 		std::lock_guard<std::mutex> lock(finishMtx);

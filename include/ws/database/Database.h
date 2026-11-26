@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <thread>
+#include <atomic>
 #include <memory>
 #include <chrono>
 #include <spdlog/spdlog.h>
@@ -249,7 +250,7 @@ namespace ws
 				return operator<<(static_cast<std::underlying_type_t<T>>(std::forward<T>(value)));
 			}
 
-			//绑定字符串参数，不会复制内容，需要保证value的生命周期在execute()之后！
+			//绑定字符串参数（拷贝到内部缓冲，execute 前无需保持 value 存活）
 			DBStatement& operator<<(const std::string& value);
 			//绑定字符串参数，会复制字符串内容！
 			DBStatement& bindString(const char* value, size_t length);
@@ -334,14 +335,14 @@ namespace ws
 				return *this;
 			}
 
-			//绑定二进制字节块，不会复制内容，需要保证value的生命周期在execute()之后！
+			//绑定二进制字节块（拷贝到内部缓冲，execute 前无需保持 value 存活）
 			DBStatement& operator<<(const ws::core::ByteArray& value);
 			//绑定二进制数据，会复制内容！
 			void bindBlob(void* data, unsigned long size);
 			//绑定NULL值
 			DBStatement& operator<<(std::nullptr_t);
 
-			//获取算术类型字段值，数据库NULL值会得到0
+			//获取算术类型字段值，数据库NULL值会得到0；按列实际类型拓宽后再写入 T
 			template<typename T> requires std::is_arithmetic_v<T>
 			DBStatement& operator>>(T& value)
 			{
@@ -359,9 +360,44 @@ namespace ws
 						{
 							value = static_cast<T>(std::strtod((const char*)b.buffer, nullptr));
 						}
+						else if (b.buffer_type == MYSQL_TYPE_FLOAT)
+						{
+							value = static_cast<T>(*reinterpret_cast<float*>(b.buffer));
+						}
+						else if (b.buffer_type == MYSQL_TYPE_DOUBLE)
+						{
+							value = static_cast<T>(*reinterpret_cast<double*>(b.buffer));
+						}
 						else
 						{
-							value = *(T*)b.buffer;
+							uint64_t u = 0;
+							int64_t s = 0;
+							const bool asUnsigned = b.is_unsigned;
+							switch (b.buffer_type)
+							{
+							case MYSQL_TYPE_TINY:
+								if (asUnsigned) u = *reinterpret_cast<uint8_t*>(b.buffer);
+								else s = *reinterpret_cast<int8_t*>(b.buffer);
+								break;
+							case MYSQL_TYPE_SHORT:
+								if (asUnsigned) u = *reinterpret_cast<uint16_t*>(b.buffer);
+								else s = *reinterpret_cast<int16_t*>(b.buffer);
+								break;
+							case MYSQL_TYPE_INT24:
+							case MYSQL_TYPE_LONG:
+								if (asUnsigned) u = *reinterpret_cast<uint32_t*>(b.buffer);
+								else s = *reinterpret_cast<int32_t*>(b.buffer);
+								break;
+							case MYSQL_TYPE_LONGLONG:
+								if (asUnsigned) u = *reinterpret_cast<uint64_t*>(b.buffer);
+								else s = *reinterpret_cast<int64_t*>(b.buffer);
+								break;
+							default:
+								value = *reinterpret_cast<T*>(b.buffer);
+								++resultIndex;
+								return *this;
+							}
+							value = asUnsigned ? static_cast<T>(u) : static_cast<T>(s);
 						}
 					}
 					++resultIndex;
@@ -571,8 +607,8 @@ namespace ws
 		private:
 			struct WorkerThread
 			{
-				bool			isExit = false;
-				std::thread		thread;
+				std::atomic<bool>	isExit{ false };
+				std::thread			thread;
 			};
 
 			using DBRequestList = std::deque<DBRequestPtr>;

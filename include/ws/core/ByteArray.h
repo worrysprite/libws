@@ -36,6 +36,8 @@ namespace ws
 			//移动赋值
 			constexpr ByteArray& operator=(ByteArray&& rvalue) noexcept
 			{
+				if (this == &rvalue)
+					return *this;
 				if (!isAttached) free(_data);
 				isAttached = rvalue.isAttached;
 				_readOnly = rvalue._readOnly;
@@ -179,7 +181,19 @@ namespace ws
 
 			//读取length长度的内容作为字符串
 			std::string readString(size_t length) const;
-			std::string readString() const { return readString(readUInt16()); }
+			//以2字节长度做前缀读取；不足时不推进游标并返回空串
+			std::string readString() const
+			{
+				constexpr size_t prefixSize = sizeof(uint16_t);
+				if (readAvailable() < prefixSize)
+					return {};
+				uint16_t len = 0;
+				memcpy(&len, readerPointer(), prefixSize);
+				if (readAvailable() < prefixSize + len)
+					return {};
+				_readPos += prefixSize;
+				return readString(len);
+			}
 
 			template<class T>
 #ifdef _WIN32
@@ -200,14 +214,25 @@ namespace ws
 				return *this;
 			}
 
-			//以2字节长度做前缀读取字符串
+			//以2字节长度做前缀读取字符串；长度或正文不足时不推进游标
 			const ByteArray& operator>>(std::string& val) const
 			{
-				uint16_t len = readUInt16();
-				if (len && readAvailable() >= len)
+				constexpr size_t prefixSize = sizeof(uint16_t);
+				if (readAvailable() < prefixSize)
+					return *this;
+				uint16_t len = 0;
+				memcpy(&len, readerPointer(), prefixSize);
+				if (readAvailable() < prefixSize + len)
+					return *this;
+				_readPos += prefixSize;
+				if (len)
 				{
 					val.assign((char*)readerPointer(), len);
 					_readPos += len;
+				}
+				else
+				{
+					val.clear();
 				}
 				return *this;
 			}

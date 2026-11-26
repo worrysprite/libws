@@ -193,29 +193,35 @@ namespace ws::core::String
 		return result;
 	}
 
-	char hex2char(const char& input)
+	int hex2char(unsigned char input)
 	{
-		if (isdigit(input))
+		if (input >= '0' && input <= '9')
 			return input - '0';
-		if (iswxdigit(input))
-			return isupper(input) ? input - 'A' + 10 : input - 'a' + 10;
-		return 0;
+		if (input >= 'A' && input <= 'F')
+			return input - 'A' + 10;
+		if (input >= 'a' && input <= 'f')
+			return input - 'a' + 10;
+		return -1;
 	}
 
 	std::string URLDecode(const char* input, size_t length)
 	{
 		std::string result;
+		result.reserve(length);
 		for (size_t i = 0; i < length; i++)
 		{
-			if (input[i] == '%')
+			if (input[i] == '%' && i + 2 < length)
 			{
-				result += (hex2char(input[i + 1]) << 4) | hex2char(input[i + 2]);
-				i += 2;
+				const int hi = hex2char(static_cast<unsigned char>(input[i + 1]));
+				const int lo = hex2char(static_cast<unsigned char>(input[i + 2]));
+				if (hi >= 0 && lo >= 0)
+				{
+					result += static_cast<char>((hi << 4) | lo);
+					i += 2;
+					continue;
+				}
 			}
-			else
-			{
-				result += input[i];
-			}
+			result += input[i];
 		}
 		return result;
 	}
