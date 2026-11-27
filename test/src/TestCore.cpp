@@ -583,6 +583,14 @@ bool testRingBuffer()
 		partial >> s;
 		if (partial.used() != usedBefore || s != "keep")
 			return false;
+
+		// 空串前缀（len=0）不得按 readData(0) 读光后续数据
+		RingBuffer emptyStr;
+		emptyStr << std::string() << (uint32_t)0xAABBCCDD;
+		s = "x";
+		emptyStr >> s;
+		if (!s.empty() || emptyStr.readUInt32() != 0xAABBCCDD)
+			return false;
 	}
 
 	return true;

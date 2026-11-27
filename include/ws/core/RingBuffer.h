@@ -133,6 +133,9 @@ namespace ws
 					return {};
 				const size_t savedPos = _readPos;
 				uint16_t len = readUInt16();
+				// readString(size_t)/readData 把 length==0 当作“读光剩余”，空串前缀不可走那条路径
+				if (len == 0)
+					return {};
 				if (used() < len)
 				{
 					_readPos = savedPos;
@@ -157,6 +160,11 @@ namespace ws
 					return *this;
 				const size_t savedPos = _readPos;
 				uint16_t len = readUInt16();
+				if (len == 0)
+				{
+					val.clear();
+					return *this;
+				}
 				if (used() < len)
 				{
 					_readPos = savedPos;
