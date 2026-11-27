@@ -8,4 +8,5 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME}
 		wsCore
 		spdlog::spdlog
 		CURL::libcurl
+		Threads::Threads
 )

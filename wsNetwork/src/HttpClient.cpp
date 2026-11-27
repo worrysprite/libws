@@ -18,10 +18,11 @@ HttpClient::~HttpClient()
 	curl_easy_cleanup(handle);
 }
 
-void HttpClient::curlRequest(std::string url, const std::map<std::string, std::string>* params /*= nullptr*/, RequestMethod method /*= GET*/,bool isNeedEscape)
+void HttpClient::curlRequest(std::string url, const std::map<std::string, std::string>* params /*= nullptr*/, RequestMethod method /*= GET*/, bool isNeedEscape, bool verifySsl)
 {
 	curl_easy_setopt(handle, CURLOPT_TIMEOUT, 15);
-	curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0);
+	curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, verifySsl ? 1L : 0L);
+	curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, verifySsl ? 2L : 0L);
 	curl_easy_setopt(handle, CURLOPT_WRITEDATA, this);
 	curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, &HttpClient::writeCallback);
 	std::string queryStr;
@@ -48,11 +49,11 @@ void HttpClient::curlRequest(std::string url, const std::map<std::string, std::s
 		break;
 	}
 	curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
-	spdlog::debug("curl requesting: %s", url.c_str());
+	spdlog::debug("curl requesting: {}", url);
 	CURLcode result = curl_easy_perform(handle);
 	if (result != CURLE_OK)
 	{
-		spdlog::warn("curl request failed: %s", curl_easy_strerror(result));
+		spdlog::warn("curl request failed: {}", curl_easy_strerror(result));
 	}
 }
 
@@ -131,7 +132,7 @@ HttpQueue::~HttpQueue()
 {
 	if (workQueueLength > 0)
 	{
-		spdlog::warn("HttpQueue remains %d requests aborted.", workQueueLength);
+		spdlog::warn("HttpQueue remains {} requests aborted.", workQueueLength.load());
 	}
 	isExit = true;
 	for (auto th : workerThreads)

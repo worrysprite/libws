@@ -6,6 +6,7 @@
 #include <list>
 #include <iostream>
 #include <thread>
+#include <atomic>
 #include <functional>
 #include <vector>
 #include <set>
@@ -57,8 +58,8 @@ namespace ws
 			std::mutex				writerMtx;
 
 		private:
-			bool					isClosing;
-			bool					hasNewData;
+			std::atomic<bool>		isClosing{ false };
+			std::atomic<bool>		hasNewData{ false };
 		};
 		using ClientPtr = std::shared_ptr<Client>;
 
@@ -95,7 +96,7 @@ namespace ws
 
 		private:
 			ServerConfig								config;
-			uint16_t									numClients = 0;
+			std::atomic<uint16_t>						numClients{ 0 };
 			Socket										listenSocket = 0;
 			std::mutex									addMtx;
 			std::list<ClientPtr>						addingClients;
@@ -153,7 +154,7 @@ namespace ws
 		private:
 			int				epfd = 0;
 			int				pipe_fd[2] = { 0, 0 };
-			bool			isRunning = false;
+			std::atomic<bool>	isRunning{ false };
 			std::thread		eventThread;
 
 			void readIntoBuffer(Client& client);
@@ -163,7 +164,7 @@ namespace ws
         private:
 			int				kqfd = 0;
 			int				pipe_fd[2] = { 0, 0 };
-			bool			isRunning = false;
+			std::atomic<bool>	isRunning{ false };
 			std::thread		eventThread;
             
             bool setNonBlock(int sockfd);

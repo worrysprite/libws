@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <atomic>
 #include <map>
 #include <vector>
 #include <list>
@@ -29,7 +30,8 @@ namespace ws
 			HttpClient();
 			virtual ~HttpClient();
 
-			void curlRequest(std::string url, const std::map<std::string, std::string>* params = nullptr, RequestMethod method = GET, bool isNeedEscape = false);
+			// verifySsl 默认开启证书校验；仅在明确需要时传 false 关闭（易 MITM）
+			void curlRequest(std::string url, const std::map<std::string, std::string>* params = nullptr, RequestMethod method = GET, bool isNeedEscape = false, bool verifySsl = true);
 			inline CURL* getHandle(){ return handle; }
 			inline void reset(){ response = nullptr; curl_easy_reset(handle); }
 
@@ -73,10 +75,10 @@ namespace ws
 
 			std::mutex				workMtx;
 			HttpRequestList			workQueue;
-			size_t					workQueueLength;
+			std::atomic<size_t>		workQueueLength{ 0 };
 			std::mutex				finishMtx;
 			HttpRequestList			finishQueue;
-			bool					isExit;
+			std::atomic<bool>		isExit{ false };
 			std::vector<std::thread*>	workerThreads;
 		};
 	}

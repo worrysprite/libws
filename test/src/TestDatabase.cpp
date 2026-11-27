@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <functional>
 #include <iostream>
 #include <variant>
@@ -168,17 +169,23 @@ private:
 		std::function<void()>>	callback;
 };
 
+static const char* envOr(const char* name, const char* fallback)
+{
+	const char* v = std::getenv(name);
+	return (v && v[0]) ? v : fallback;
+}
+
 bool testDatabase()
 {
 	std::cout << "====================Test Database====================" << std::endl;
 	MySQLConfig dbConfig;
-	dbConfig.host = "127.0.0.1";
-	dbConfig.port = 3306;
-	dbConfig.user = "root";
-	dbConfig.password = "";
-	dbConfig.database = "testdb";
+	dbConfig.host = envOr("LIBWS_MYSQL_HOST", "127.0.0.1");
+	dbConfig.port = static_cast<uint16_t>(std::atoi(envOr("LIBWS_MYSQL_PORT", "3306")));
+	dbConfig.user = envOr("LIBWS_MYSQL_USER", "root");
+	dbConfig.password = envOr("LIBWS_MYSQL_PASSWORD", "");
+	dbConfig.database = envOr("LIBWS_MYSQL_DATABASE", "testdb");
 #if defined(__linux__) || defined(__APPLE__)
-	dbConfig.unixSock = "/tmp/mysql.sock";
+	dbConfig.unixSock = envOr("LIBWS_MYSQL_SOCKET", "/tmp/mysql.sock");
 #endif
 
 	DBQueue queue(dbConfig);

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <array>
+#include <vector>
 #include <spdlog/spdlog.h>
 #include "ws/core/Signal.h"
 #include "ws/core/Sonyflake.h"
@@ -77,6 +78,25 @@ bool testEvent()
 	evt.type = 2;
 	dispatcher.dispatchEvent(evt);
 	dispatcher.removeEventListener(2, &cb2);
+
+	// H9: 改优先级时 erase+insert，派发顺序应随 priority 变化
+	std::vector<int> order;
+	std::function<void(const Event&)> low = [&order](const Event&) { order.push_back(1); };
+	std::function<void(const Event&)> high = [&order](const Event&) { order.push_back(2); };
+	dispatcher.addEventListener(3, &low, 0);
+	dispatcher.addEventListener(3, &high, 10);
+	Event evt3(3);
+	dispatcher.dispatchEvent(evt3);
+	if (order.size() != 2 || order[0] != 2 || order[1] != 1)
+		return false;
+	order.clear();
+	dispatcher.addEventListener(3, &low, 20);	// 提升 low 优先级
+	dispatcher.dispatchEvent(evt3);
+	if (order.size() != 2 || order[0] != 1 || order[1] != 2)
+		return false;
+	dispatcher.removeEventListener(3, &low);
+	dispatcher.removeEventListener(3, &high);
+
 	std::cout << std::endl;
 	return true;
 }
@@ -167,6 +187,58 @@ bool testByteArray()
 	}
 
 	std::cout << b3.size() << ": " << b3.toHexString(true) << std::endl;
+
+	// H4: 拷贝赋值释放旧缓冲；自赋值安全
+	{
+		ByteArray a;
+		a << (uint32_t)0x11223344;
+		ByteArray b;
+		b << (uint32_t)0x55667788;
+		void* oldB = b.data();
+		b = a;
+		if (b.size() != a.size() || b.readUInt32() != 0x11223344)
+			return false;
+		(void)oldB;
+		b = b;	// self-assign
+		b.readPosition(0);
+		if (b.readUInt32() != 0x11223344)
+			return false;
+	}
+
+	// H4: attach 后不可 expand
+	{
+		char raw[8] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+		ByteArray view;
+		view.attach(raw, sizeof(raw));
+		bool threw = false;
+		try
+		{
+			view.expand(sizeof(raw) + 1);
+		}
+		catch (const std::runtime_error&)
+		{
+			threw = true;
+		}
+		if (!threw)
+			return false;
+	}
+
+	// H5: 长度前缀字符串短读不推进游标
+	{
+		ByteArray packet;
+		packet << std::string("hello");
+		ByteArray partial(packet.data(), 3, true);	// 仅前缀部分
+		std::string out = "keep";
+		size_t posBefore = partial.readPosition();
+		partial >> out;
+		if (partial.readPosition() != posBefore || out != "keep")
+			return false;
+		packet.readPosition(0);
+		packet >> out;
+		if (out != "hello")
+			return false;
+	}
+
 	return true;
 }
 
@@ -434,6 +506,20 @@ bool testString()
 	const char date1[] = "1970/01/02 08:00:00", date2[] = "1969/12/31 08:00:00";
 	std::cout << "Timestamp of " << date1 << " is " << String::formatTime(date1) << std::endl;
 	std::cout << "Timestamp of " << date2 << " is " << String::formatTime(date2) << std::endl;
+
+	// H11: URLDecode 截断 % 与非法 hex 按字面保留，合法序列正确解码
+	{
+		const char truncated[] = "a%";
+		if (String::URLDecode(truncated, sizeof(truncated) - 1) != "a%")
+			return false;
+		const char bad[] = "a%GGx";
+		if (String::URLDecode(bad, sizeof(bad) - 1) != "a%GGx")
+			return false;
+		const char ok[] = "%41%42";
+		if (String::URLDecode(ok, sizeof(ok) - 1) != "AB")
+			return false;
+	}
+
 	return true;
 }
 
@@ -467,6 +553,46 @@ bool testRingBuffer()
 		ring << fmt::format("测试测试测试测试测试测试测试测试测试测试：{}", num + i);
 		spdlog::debug(ring.readString());
 	}
+
+	// H4: 赋值不泄漏；H5: 短读数字/字符串不推进
+	{
+		RingBuffer a;
+		a << (uint32_t)42 << std::string("xyz");
+		RingBuffer b = a;
+		if (b.readUInt32() != 42)
+			return false;
+		std::string s;
+		b >> s;
+		if (s != "xyz")
+			return false;
+
+		RingBuffer shortBuf;
+		uint8_t one = 1;
+		shortBuf.writeData(&one, 1);
+		size_t usedBefore = shortBuf.used();
+		(void)shortBuf.readUInt32();	// 不足 4 字节，应返回 0 且不消费
+		if (shortBuf.used() != usedBefore)
+			return false;
+
+		RingBuffer partial;
+		uint16_t len = 5;
+		partial.writeData(&len, sizeof(len));
+		partial.writeData("ab", 2);	// 正文不足
+		usedBefore = partial.used();
+		s = "keep";
+		partial >> s;
+		if (partial.used() != usedBefore || s != "keep")
+			return false;
+
+		// 空串前缀（len=0）不得按 readData(0) 读光后续数据
+		RingBuffer emptyStr;
+		emptyStr << std::string() << (uint32_t)0xAABBCCDD;
+		s = "x";
+		emptyStr >> s;
+		if (!s.empty() || emptyStr.readUInt32() != 0xAABBCCDD)
+			return false;
+	}
+
 	return true;
 }
 

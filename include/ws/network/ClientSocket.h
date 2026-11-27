@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <functional>
 
 #include "ws/network/NetDef.h"
@@ -60,10 +61,10 @@ namespace ws
 				CONNECTED
 			};
 			SocketStatus					lastStatus = SocketStatus::DISCONNECTED;
-			SocketStatus					status = SocketStatus::DISCONNECTED;
+			std::atomic<SocketStatus>		status{ SocketStatus::DISCONNECTED };
 			Socket							sockfd = 0;
 			std::thread						workerThread;
-			bool							isExit = false;
+			std::atomic<bool>				isExit{ false };
 			uint64_t						lastConnectTime = 0;
 
 			void					workerProc();

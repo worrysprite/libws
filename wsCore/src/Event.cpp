@@ -6,13 +6,12 @@ using namespace ws::core;
 void EventDispatcher::once(int type, const EventCallback* callback, int priority)
 {
 	auto& set = listeners[type];
-	for (auto& cb : set)
+	for (auto it = set.begin(); it != set.end(); ++it)
 	{
-		if (cb.callback == callback)	//确保回调函数唯一性
+		if (it->callback == callback)	//确保回调函数唯一性
 		{
-			const_cast<CallbackType&>(cb).once = true;
-			const_cast<CallbackType&>(cb).priority = priority;
-			return;
+			set.erase(it);
+			break;
 		}
 	}
 	set.insert(CallbackType{ callback, priority, true });
@@ -21,13 +20,12 @@ void EventDispatcher::once(int type, const EventCallback* callback, int priority
 void EventDispatcher::addEventListener(int type, const EventCallback* callback, int priority)
 {
 	auto& set = listeners[type];
-	for (auto& cb : set)
+	for (auto it = set.begin(); it != set.end(); ++it)
 	{
-		if (cb.callback == callback)	//确保回调函数唯一性
+		if (it->callback == callback)	//确保回调函数唯一性
 		{
-			const_cast<CallbackType&>(cb).once = false;
-			const_cast<CallbackType&>(cb).priority = priority;
-			return;
+			set.erase(it);
+			break;
 		}
 	}
 	set.insert(CallbackType{ callback, priority, false });

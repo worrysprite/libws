@@ -52,22 +52,10 @@ namespace ws
 
 		ByteArray& ByteArray::operator=(const ByteArray& other)
 		{
-			isAttached = other.isAttached;
-			_readOnly = other._readOnly;
-			_readPos = other._readPos;
-			_writePos = other._writePos;
-			_capacity = other._capacity;
-			if (isAttached)
-			{
-				_data = other._data;
-			}
-			else
-			{
-				_data = malloc(_capacity);
-				if (!_data)
-					throw std::bad_alloc();
-				memcpy(_data, other._data, _capacity);
-			}
+			if (this == &other)
+				return *this;
+			ByteArray tmp(other);
+			swap(tmp);
 			return *this;
 		}
 
@@ -121,6 +109,21 @@ namespace ws
 
 		void ByteArray::expand(size_t size)
 		{
+			if (isAttached)
+			{
+				if (size > _capacity)
+					throw std::runtime_error("cannot expand attached ByteArray");
+				return;
+			}
+			// 容量为 0 时无法左移扩容，先分配最小块
+			if (_capacity == 0)
+			{
+				_capacity = BYTES_DEFAULT_SIZE;
+				_data = malloc(_capacity);
+				if (!_data)
+					throw std::bad_alloc();
+				memset(_data, 0, _capacity);
+			}
 			size_t newCap = _capacity;
 			while (size > newCap)
 			{

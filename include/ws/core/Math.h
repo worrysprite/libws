@@ -26,7 +26,7 @@ namespace ws
 			/************************************************************************/
 			/* 产生一个在[0,1)区间的随机浮点数                                        */
 			/************************************************************************/
-			inline static double						random(){ return randomGenerator() / (0xFFFFFFFF + 1.0); }
+			inline static double						random(){ return engine()() / (0xFFFFFFFF + 1.0); }
 			/************************************************************************/
 			/* 产生一个在[0,range)区间的随机整数                                    */
 			/************************************************************************/
@@ -48,8 +48,12 @@ namespace ws
 			inline static bool							isTrigger(uint32_t chance, uint32_t totalChance = 10000){ return chance > random(totalChance); }
 
 		private:
-			//std::mt19937::tempering_d
-			inline static std::mt19937 randomGenerator = std::mt19937((uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
+			inline static std::mt19937& engine()
+			{
+				thread_local std::mt19937 gen(
+					(uint32_t)std::chrono::system_clock::now().time_since_epoch().count());
+				return gen;
+			}
 		};
 
 		template<typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
